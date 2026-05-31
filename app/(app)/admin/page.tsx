@@ -12,13 +12,19 @@ const POS_COLORS: Record<string, string> = { GK: "bg-yellow-600", DEF: "bg-blue-
 export default function AdminSeite() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "auction" | "schedule" | "sync">("users");
+  const [tab, setTab] = useState<"users" | "auction" | "teams" | "schedule" | "sync">("users");
 
   // User-Erstellung
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
   const [userMsg, setUserMsg] = useState("");
+
+  // Teams-Reiter
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [teamIdx, setTeamIdx] = useState(0);
+  const [teamSquad, setTeamSquad] = useState<{ id: number; boughtFor: number; fplPlayer: { webName: string; teamName: string; position: string; totalPoints: number } }[]>([]);
+  const [teamSquadLoading, setTeamSquadLoading] = useState(false);
 
   // Auktion
   const [teams, setTeams] = useState<Team[]>([]);
@@ -57,10 +63,26 @@ export default function AdminSeite() {
       fetch("/api/admin/teams").then((r) => r.json()).then((d) => Array.isArray(d) && setTeams(d));
       loadPlayers();
     }
+    if (tab === "teams") {
+      fetch("/api/admin/team-order")
+        .then((r) => r.json())
+        .then((d) => { if (Array.isArray(d)) { setAllTeams(d); setTeamIdx(0); } });
+    }
     if (tab === "schedule") {
       fetch("/api/admin/team-order").then((r) => r.json()).then((d) => Array.isArray(d) && setTeamOrder(d));
     }
   }, [tab, loadPlayers]);
+
+  // Kader des aktuell gewählten Teams laden
+  useEffect(() => {
+    if (tab !== "teams" || allTeams.length === 0) return;
+    const team = allTeams[teamIdx];
+    if (!team) return;
+    setTeamSquadLoading(true);
+    fetch(`/api/auction?teamId=${team.id}`)
+      .then((r) => r.json())
+      .then((d) => { setTeamSquad(d.squad ?? []); setTeamSquadLoading(false); });
+  }, [tab, allTeams, teamIdx]);
 
   async function assignPlayer(p: Player) {
     const tid = rowTeam[p.id];
@@ -177,6 +199,7 @@ export default function AdminSeite() {
   const tabs = [
     { key: "users", label: "Nutzer anlegen" },
     { key: "auction", label: "Auktion" },
+    { key: "teams", label: "Teams" },
     { key: "schedule", label: "Spielplan" },
     { key: "sync", label: "FPL Sync" },
   ] as const;
@@ -341,6 +364,108 @@ export default function AdminSeite() {
               <p className="px-4 py-6 text-center text-gray-500 text-sm">Keine Spieler gefunden</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Teams ── */}
+      {tab === "teams" && (
+        <div>
+          {allTeams.length === 0 ? (
+            <p className="text-gray-500">Keine Teams gefunden.</p>
+          ) : (
+            <>
+              {/* Team-Navigation */}
+              <div className="flex items-center gap-3 mb-6">
+                <button
+                  onClick={() => setTeamIdx((i) => Math.max(0, i - 1))}
+                  disabled={teamIdx === 0}
+                  className="px-3 py-2 bg-[#16213e] rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-lg"
+                >
+                  ‹
+                </button>
+
+                <div className="flex gap-2 flex-wrap">
+                  {allTeams.map((t, i) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTeamIdx(i)}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        i === teamIdx
+                          ? "bg-[#00ff87] text-black"
+                          : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setTeamIdx((i) => Math.min(allTeams.length - 1, i + 1))}
+                  disabled={teamIdx === allTeams.length - 1}
+                  className="px-3 py-2 bg-[#16213e] rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-lg"
+                >
+                  ›
+                </button>
+              </div>
+
+              {/* Kader-Übersicht */}
+              {teamSquadLoading ? (
+                <p className="text-gray-400 text-sm">Lädt…</p>
+              ) : (() => {
+                const byPos: Record<string, typeof teamSquad> = { GK: [], DEF: [], MID: [], FWD: [] };
+                for (const sp of teamSquad) byPos[sp.fplPlayer.position]?.push(sp);
+                const cols = [
+                  { pos: "GK",  label: "Torhüter", max: 3,  color: "border-yellow-500" },
+                  { pos: "DEF", label: "Abwehr",   max: 8,  color: "border-blue-500"   },
+                  { pos: "MID", label: "Mittelfeld", max: 8, color: "border-green-500"  },
+                  { pos: "FWD", label: "Sturm",    max: 6,  color: "border-red-500"    },
+                ];
+                const totalSpent = teamSquad.reduce((s, p) => s + p.boughtFor, 0);
+                return (
+                  <>
+                    <div className="flex items-center gap-4 mb-4 text-sm">
+                      <span className="text-gray-400">
+                        Spieler: <span className="text-white font-bold">{teamSquad.length}/25</span>
+                      </span>
+                      <span className="text-gray-400">
+                        Ausgegeben: <span className="text-yellow-400 font-bold">{totalSpent} Mio</span>
+                      </span>
+                      <span className="text-gray-400">
+                        Restbudget: <span className="text-[#00ff87] font-bold">{560 - totalSpent} Mio</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      {cols.map(({ pos, label, max, color }) => (
+                        <div key={pos} className={`bg-[#16213e] rounded-xl border-t-2 ${color} overflow-hidden`}>
+                          <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700">
+                            <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
+                            <span className="text-xs text-gray-400">{byPos[pos].length}/{max}</span>
+                          </div>
+                          <div className="p-2 space-y-1 min-h-[120px]">
+                            {byPos[pos].length === 0 ? (
+                              <p className="text-xs text-gray-600 text-center pt-4">–</p>
+                            ) : (
+                              byPos[pos].map((sp) => (
+                                <div key={sp.id} className="flex items-center justify-between px-2 py-1.5 bg-[#0f3460] rounded text-xs">
+                                  <div>
+                                    <div className="font-semibold text-white leading-tight">{sp.fplPlayer.webName}</div>
+                                    <div className="text-gray-400 text-[10px]">{sp.fplPlayer.teamName}</div>
+                                  </div>
+                                  <span className="text-yellow-400 font-bold ml-2 shrink-0">{sp.boughtFor}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
 
