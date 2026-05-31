@@ -9,7 +9,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const position = searchParams.get("position");
   const search = searchParams.get("search");
-  const available = searchParams.get("available"); // nur nicht-versteigerte
 
   const where: Record<string, unknown> = {};
   if (position) where.position = position;
@@ -20,16 +19,31 @@ export async function GET(req: NextRequest) {
       { lastName: { contains: search } },
     ];
   }
-  if (available === "true") {
-    where.auctionResult = null;
-  }
 
   const players = await prisma.fplPlayer.findMany({
     where,
-    orderBy: { totalPoints: "desc" },
-    take: 100,
-    include: { auctionResult: true },
+    orderBy: [{ position: "asc" }, { totalPoints: "desc" }],
+    include: {
+      squadPlayers: {
+        take: 1,
+        include: { team: true },
+      },
+    },
   });
 
-  return NextResponse.json(players);
+  // Flatten: owner-Info direkt auf Spieler-Objekt
+  const result = players.map((p) => ({
+    id: p.id,
+    webName: p.webName,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    position: p.position,
+    teamName: p.teamName,
+    totalPoints: p.totalPoints,
+    owner: p.squadPlayers[0]
+      ? { teamId: p.squadPlayers[0].teamId, teamName: p.squadPlayers[0].team.name, boughtFor: p.squadPlayers[0].boughtFor }
+      : null,
+  }));
+
+  return NextResponse.json(result);
 }

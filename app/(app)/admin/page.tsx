@@ -1,10 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 
 type Team = { id: number; name: string; sortOrder: number; user: { username: string } };
-type Player = { id: number; webName: string; position: string; teamName: string; totalPoints: number; auctionResult: { team: { name: string } } | null };
+type Owner = { teamId: number; teamName: string; boughtFor: number };
+type Player = { id: number; webName: string; firstName: string; lastName: string; position: string; teamName: string; totalPoints: number; owner: Owner | null };
+
+const POS_COLORS: Record<string, string> = { GK: "bg-yellow-600", DEF: "bg-blue-600", MID: "bg-green-600", FWD: "bg-red-600" };
 
 export default function AdminSeite() {
   const { user, loading } = useAuth();
@@ -20,11 +23,14 @@ export default function AdminSeite() {
   // Auktion
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [playerSearch, setPlayerSearch] = useState("");
-  const [selectedTeam, setSelectedTeam] = useState("");
-  const [selectedPlayer, setSelectedPlayer] = useState("");
-  const [auctionPrice, setAuctionPrice] = useState("");
-  const [auctionMsg, setAuctionMsg] = useState("");
+  const [search, setSearch] = useState("");
+  const [posFilter, setPosFilter] = useState("ALL");
+  const [showSold, setShowSold] = useState(true);
+  // Pro Spieler: { [fplPlayerId]: { teamId, price } }
+  const [rowTeam, setRowTeam] = useState<Record<number, string>>({});
+  const [rowPrice, setRowPrice] = useState<Record<number, string>>({});
+  const [rowMsg, setRowMsg] = useState<Record<number, string>>({});
+  const [rowLoading, setRowLoading] = useState<Record<number, boolean>>({});
 
   // Spielplan + Teamreihenfolge
   const [scheduleMsg, setScheduleMsg] = useState("");
@@ -39,20 +45,63 @@ export default function AdminSeite() {
     if (!loading && !user?.isAdmin) router.push("/tabelle");
   }, [user, loading, router]);
 
+  const loadPlayers = useCallback(() => {
+    const q = search ? `&search=${encodeURIComponent(search)}` : "";
+    fetch(`/api/players?${q}`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setPlayers(d));
+  }, [search]);
+
   useEffect(() => {
     if (tab === "auction") {
       fetch("/api/admin/teams").then((r) => r.json()).then((d) => Array.isArray(d) && setTeams(d));
+      loadPlayers();
     }
     if (tab === "schedule") {
       fetch("/api/admin/team-order").then((r) => r.json()).then((d) => Array.isArray(d) && setTeamOrder(d));
     }
-  }, [tab]);
+  }, [tab, loadPlayers]);
 
-  useEffect(() => {
-    if (tab !== "auction") return;
-    const q = playerSearch ? `&search=${encodeURIComponent(playerSearch)}` : "&available=true";
-    fetch(`/api/players?${q}`).then((r) => r.json()).then((d) => Array.isArray(d) && setPlayers(d));
-  }, [playerSearch, tab]);
+  async function assignPlayer(p: Player) {
+    const tid = rowTeam[p.id];
+    const price = parseInt(rowPrice[p.id] ?? "");
+    if (!tid || !price || price < 1) {
+      setRowMsg((m) => ({ ...m, [p.id]: "Team + Gebot angeben" }));
+      return;
+    }
+    setRowLoading((l) => ({ ...l, [p.id]: true }));
+    setRowMsg((m) => ({ ...m, [p.id]: "" }));
+    const res = await fetch("/api/auction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId: parseInt(tid), fplPlayerId: p.id, price }),
+    });
+    const d = await res.json();
+    setRowLoading((l) => ({ ...l, [p.id]: false }));
+    if (res.ok) {
+      // Spieler lokal als verkauft markieren
+      const team = teams.find((t) => t.id === parseInt(tid));
+      setPlayers((prev) =>
+        prev.map((pl) => pl.id === p.id ? { ...pl, owner: { teamId: parseInt(tid), teamName: team?.name ?? "", boughtFor: price } } : pl)
+      );
+      setRowTeam((r) => { const n = { ...r }; delete n[p.id]; return n; });
+      setRowPrice((r) => { const n = { ...r }; delete n[p.id]; return n; });
+    } else {
+      setRowMsg((m) => ({ ...m, [p.id]: `✗ ${d.error}` }));
+    }
+  }
+
+  async function removeAssignment(p: Player) {
+    if (!confirm(`${p.webName} aus dem Kader entfernen?`)) return;
+    const res = await fetch("/api/auction", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fplPlayerId: p.id }),
+    });
+    if (res.ok) {
+      setPlayers((prev) => prev.map((pl) => pl.id === p.id ? { ...pl, owner: null } : pl));
+    }
+  }
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -64,21 +113,6 @@ export default function AdminSeite() {
     const d = await res.json();
     setUserMsg(res.ok ? `✓ Nutzer "${newUsername}" angelegt` : `✗ ${d.error}`);
     if (res.ok) { setNewUsername(""); setNewPassword(""); setNewTeamName(""); }
-  }
-
-  async function assignPlayer(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch("/api/auction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamId: parseInt(selectedTeam), fplPlayerId: parseInt(selectedPlayer), price: parseInt(auctionPrice) }),
-    });
-    const d = await res.json();
-    setAuctionMsg(res.ok ? "✓ Spieler zugewiesen" : `✗ ${d.error}`);
-    if (res.ok) {
-      const q = playerSearch ? `&search=${encodeURIComponent(playerSearch)}` : "&available=true";
-      fetch(`/api/players?${q}`).then((r) => r.json()).then((d) => Array.isArray(d) && setPlayers(d));
-    }
   }
 
   function moveTeam(index: number, direction: "up" | "down") {
@@ -130,6 +164,16 @@ export default function AdminSeite() {
     setSyncMsg(res.ok ? `✓ GW ${gwNum} synchronisiert` : `✗ ${d.error}`);
   }
 
+  // Gefilterte + sortierte Spielerliste
+  const filtered = players.filter((p) => {
+    if (posFilter !== "ALL" && p.position !== posFilter) return false;
+    if (!showSold && p.owner) return false;
+    return true;
+  });
+
+  const soldCount = players.filter((p) => p.owner).length;
+  const availCount = players.length - soldCount;
+
   const tabs = [
     { key: "users", label: "Nutzer anlegen" },
     { key: "auction", label: "Auktion" },
@@ -153,6 +197,7 @@ export default function AdminSeite() {
         ))}
       </div>
 
+      {/* ── Nutzer anlegen ── */}
       {tab === "users" && (
         <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
           <h2 className="font-semibold mb-4">Neuen Nutzer anlegen</h2>
@@ -166,46 +211,142 @@ export default function AdminSeite() {
         </div>
       )}
 
+      {/* ── Auktion ── */}
       {tab === "auction" && (
-        <div className="bg-[#16213e] rounded-xl p-6">
-          <h2 className="font-semibold mb-4">Spieler zuweisen</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <form onSubmit={assignPlayer} className="space-y-3">
-              <select value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)} required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white">
-                <option value="">Team wählen...</option>
-                {teams.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.user.username})</option>)}
-              </select>
-              <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(e.target.value)} required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white">
-                <option value="">Spieler wählen...</option>
-                {players.filter((p) => !p.auctionResult).map((p) => (
-                  <option key={p.id} value={p.id}>{p.webName} ({p.position} · {p.teamName})</option>
+        <div className="space-y-4">
+          {/* Filter-Leiste */}
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Spieler suchen…"
+              className="bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white text-sm w-48"
+            />
+            {["ALL", "GK", "DEF", "MID", "FWD"].map((pos) => (
+              <button
+                key={pos}
+                onClick={() => setPosFilter(pos)}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${posFilter === pos ? "bg-[#00ff87] text-black" : "bg-[#16213e] hover:bg-[#0f3460]"}`}
+              >
+                {pos}
+              </button>
+            ))}
+            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer ml-2">
+              <input type="checkbox" checked={showSold} onChange={(e) => setShowSold(e.target.checked)} className="accent-[#00ff87]" />
+              Vergebene anzeigen
+            </label>
+            <span className="ml-auto text-xs text-gray-400">
+              {availCount} verfügbar · {soldCount} vergeben
+            </span>
+          </div>
+
+          {/* Spielerliste */}
+          <div className="bg-[#16213e] rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-400 uppercase border-b border-gray-700">
+                  <th className="px-4 py-2 text-left">Spieler</th>
+                  <th className="px-4 py-2 text-left">Verein</th>
+                  <th className="px-3 py-2 text-center">Pkt</th>
+                  <th className="px-4 py-2 text-left">Team</th>
+                  <th className="px-3 py-2 text-center w-20">Gebot</th>
+                  <th className="px-3 py-2 w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p) => (
+                  <tr
+                    key={p.id}
+                    className={`border-t border-gray-700/50 transition-colors ${p.owner ? "opacity-50" : "hover:bg-[#0f3460]/60"}`}
+                  >
+                    {/* Name + Position */}
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${POS_COLORS[p.position] ?? "bg-gray-600"}`}>
+                          {p.position}
+                        </span>
+                        <span className={`font-medium ${p.owner ? "text-gray-400" : "text-white"}`}>{p.webName}</span>
+                      </div>
+                    </td>
+
+                    {/* Verein */}
+                    <td className="px-4 py-2 text-gray-400 text-xs">{p.teamName}</td>
+
+                    {/* Punkte */}
+                    <td className="px-3 py-2 text-center text-[#00ff87] text-xs">{p.totalPoints}</td>
+
+                    {p.owner ? (
+                      /* Bereits vergeben */
+                      <>
+                        <td className="px-4 py-2">
+                          <span className="text-[#00ff87] text-xs font-semibold">{p.owner.teamName}</span>
+                        </td>
+                        <td className="px-3 py-2 text-center text-yellow-400 text-xs font-bold">
+                          {p.owner.boughtFor} Mio
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            onClick={() => removeAssignment(p)}
+                            className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
+                            title="Zuweisung aufheben"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      /* Verfügbar – Inline-Zuweisung */
+                      <>
+                        <td className="px-4 py-2">
+                          <select
+                            value={rowTeam[p.id] ?? ""}
+                            onChange={(e) => setRowTeam((r) => ({ ...r, [p.id]: e.target.value }))}
+                            className="bg-[#0f3460] border border-gray-600 rounded px-2 py-1 text-white text-xs w-full"
+                          >
+                            <option value="">Team…</option>
+                            {teams.map((t) => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={rowPrice[p.id] ?? ""}
+                            onChange={(e) => setRowPrice((r) => ({ ...r, [p.id]: e.target.value }))}
+                            placeholder="Mio"
+                            className="bg-[#0f3460] border border-gray-600 rounded px-2 py-1 text-white text-xs w-16 text-center"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            onClick={() => assignPlayer(p)}
+                            disabled={rowLoading[p.id]}
+                            className="bg-[#00ff87] text-black text-xs font-bold px-2 py-1 rounded hover:bg-green-400 disabled:opacity-50 transition-colors"
+                          >
+                            {rowLoading[p.id] ? "…" : "✓"}
+                          </button>
+                          {rowMsg[p.id] && (
+                            <div className="text-[10px] text-red-400 mt-0.5 whitespace-nowrap">{rowMsg[p.id]}</div>
+                          )}
+                        </td>
+                      </>
+                    )}
+                  </tr>
                 ))}
-              </select>
-              <input value={auctionPrice} onChange={(e) => setAuctionPrice(e.target.value)} type="number" min="1" placeholder="Gebot (Mio, Start: 1)" required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white" />
-              <button type="submit" className="w-full bg-yellow-400 text-black font-bold py-2 rounded hover:bg-yellow-300">Zuweisen</button>
-              {auctionMsg && <p className="text-sm text-green-400">{auctionMsg}</p>}
-            </form>
-            <div>
-              <input value={playerSearch} onChange={(e) => setPlayerSearch(e.target.value)} placeholder="Spieler suchen..." className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white mb-3" />
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {players.slice(0, 30).map((p) => (
-                  <div key={p.id} className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${p.auctionResult ? "opacity-40" : "bg-[#0f3460]"}`}>
-                    <span className="text-xs bg-[#38003c] px-1 rounded">{p.position}</span>
-                    <span className="flex-1">{p.webName}</span>
-                    <span className="text-xs text-gray-400">{p.teamName}</span>
-                    <span className="text-xs text-[#00ff87]">{p.totalPoints ?? ""}</span>
-                    {p.auctionResult && <span className="text-xs text-gray-500">{p.auctionResult.team.name}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <p className="px-4 py-6 text-center text-gray-500 text-sm">Keine Spieler gefunden</p>
+            )}
           </div>
         </div>
       )}
 
+      {/* ── Spielplan ── */}
       {tab === "schedule" && (
         <div className="space-y-6">
-          {/* Schritt 1: Auktionsnummern festlegen */}
           <div className="bg-[#16213e] rounded-xl p-6">
             <h2 className="font-semibold mb-1">Schritt 1: Auktionsnummern vergeben (1–10)</h2>
             <p className="text-gray-400 text-sm mb-4">
@@ -215,7 +356,6 @@ export default function AdminSeite() {
               <p className="text-gray-500 text-sm">Noch keine Teams angelegt.</p>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Nummernvergabe */}
                 <div className="space-y-2">
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Reihenfolge anpassen</p>
                   {teamOrder.map((team, i) => (
@@ -238,8 +378,6 @@ export default function AdminSeite() {
                   </button>
                   {orderMsg && <p className="text-sm text-green-400">{orderMsg}</p>}
                 </div>
-
-                {/* Vorschau Spieltag 1 */}
                 {teamOrder.length === 10 && (
                   <div>
                     <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Vorschau Spieltag 1</p>
@@ -259,8 +397,6 @@ export default function AdminSeite() {
               </div>
             )}
           </div>
-
-          {/* Schritt 2: Spielplan generieren */}
           <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
             <h2 className="font-semibold mb-1">Schritt 2: Spielplan generieren</h2>
             <p className="text-gray-400 text-sm mb-4">
@@ -274,6 +410,7 @@ export default function AdminSeite() {
         </div>
       )}
 
+      {/* ── FPL Sync ── */}
       {tab === "sync" && (
         <div className="bg-[#16213e] rounded-xl p-6 max-w-md space-y-6">
           <div>
