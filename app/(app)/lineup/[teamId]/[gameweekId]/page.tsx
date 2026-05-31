@@ -13,6 +13,15 @@ const POS_COLORS: Record<string, string> = {
   GK: "bg-yellow-600", DEF: "bg-blue-600", MID: "bg-green-600", FWD: "bg-red-600",
 };
 
+function pointsToGoals(pts: number): number {
+  if (pts < 38) return 0;
+  return 1 + Math.floor((pts - 38) / 9);
+}
+function pointsToNextGoal(pts: number): number {
+  if (pts < 38) return 38 - pts;
+  return 9 - ((pts - 38) % 9);
+}
+
 export default function LineupViewPage() {
   const { teamId, gameweekId } = useParams<{ teamId: string; gameweekId: string }>();
   const router = useRouter();
@@ -44,10 +53,14 @@ export default function LineupViewPage() {
 
   const starters = slots.filter((s) => s.position <= 11);
   const bench = slots.filter((s) => s.position > 11);
-  const totalPts = slots
-    .filter((s) => s.position <= 11)
-    .reduce((sum, s) => sum + (s.fplPlayer.points ?? 0), 0);
-  const captainBonus = starters.find((s) => s.isCaptain)?.fplPlayer.points ?? 0;
+  const hasPoints = slots.some((s) => s.fplPlayer.points !== null);
+
+  const rawTotal = starters.reduce((sum, s) => {
+    const pts = s.fplPlayer.points ?? 0;
+    return sum + (s.isCaptain ? pts * 2 : pts);
+  }, 0);
+  const goals = pointsToGoals(rawTotal);
+  const toNext = hasPoints ? pointsToNextGoal(rawTotal) : null;
 
   return (
     <div className="max-w-lg mx-auto">
@@ -65,10 +78,20 @@ export default function LineupViewPage() {
             <p className="text-sm text-gray-400">Spieltag {gwNumber}</p>
           )}
         </div>
-        {slots.some((s) => s.fplPlayer.points !== null) && (
+        {hasPoints && (
           <div className="ml-auto text-right">
-            <div className="text-2xl font-bold text-[#00ff87]">{totalPts + captainBonus}</div>
-            <div className="text-xs text-gray-400">Punkte</div>
+            <div className="flex items-end gap-3 justify-end">
+              <div>
+                <div className="text-xl font-bold text-white">{rawTotal}</div>
+                <div className="text-[10px] text-gray-400">Punkte</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-[#00ff87]">{goals} <span className="text-lg">⚽</span></div>
+                <div className="text-[10px] text-gray-400">
+                  {toNext !== null && goals > 0 ? `noch ${toNext} bis zum nächsten` : toNext !== null ? `noch ${toNext} bis Tor` : ""}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

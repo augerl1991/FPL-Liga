@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchGameweekPoints } from "@/lib/fpl-api";
+import { pointsToGoals } from "@/lib/scoring";
 
 // Admin-Route: Punkte für einen Spieltag eintragen und H2H-Matches berechnen
 export async function POST(req: NextRequest) {
@@ -29,36 +30,67 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Punkte pro Team berechnen (Starter-Punkte + Kapitän x2)
-  const lineups = await prisma.lineup.findMany({
-    where: { gameweekId },
-    include: {
-      slots: { include: { fplPlayer: true } },
-      team: true,
-    },
+  // Rohpunkte pro Team berechnen (Starter + Kapitän ×2)
+  // Rollover: kein Lineup → letztes vorheriges Lineup nehmen
+  const teams = await prisma.team.findMany({
+    where: { user: { isAdmin: false } },
+    select: { id: true },
   });
 
-  const teamPoints = new Map<number, number>();
-  for (const lineup of lineups) {
+  const teamRawPoints = new Map<number, number>();
+
+  for (const team of teams) {
+    // Lineup für diesen GW
+    let lineup = await prisma.lineup.findUnique({
+      where: { teamId_gameweekId: { teamId: team.id, gameweekId } },
+      include: { slots: true },
+    });
+
+    // Fallback: letztes vorheriges Lineup
+    if (!lineup) {
+      lineup = await prisma.lineup.findFirst({
+        where: {
+          teamId: team.id,
+          gameweek: { number: { lt: gameweek.number } },
+        },
+        orderBy: { gameweek: { number: "desc" } },
+        include: { slots: true },
+      });
+    }
+
+    if (!lineup) continue;
+
     let total = 0;
     for (const slot of lineup.slots) {
       if (slot.position > 11) continue; // Bank
       const pts = fplPoints.get(slot.fplPlayerId) ?? 0;
       total += slot.isCaptain ? pts * 2 : pts;
     }
-    teamPoints.set(lineup.teamId, total);
+    teamRawPoints.set(team.id, total);
   }
 
-  // H2H-Matches aktualisieren
+  // Rohpunkte → Tore umrechnen und H2H-Matches speichern
   const matches = await prisma.match.findMany({ where: { gameweekId } });
+  const results: { match: number; home: string; away: string; homeGoals: number; awayGoals: number; homeRaw: number; awayRaw: number }[] = [];
+
   for (const match of matches) {
-    const homePoints = teamPoints.get(match.homeTeamId) ?? 0;
-    const awayPoints = teamPoints.get(match.awayTeamId) ?? 0;
+    const homeRaw = teamRawPoints.get(match.homeTeamId) ?? 0;
+    const awayRaw = teamRawPoints.get(match.awayTeamId) ?? 0;
+    const homeGoals = pointsToGoals(homeRaw);
+    const awayGoals = pointsToGoals(awayRaw);
+
     await prisma.match.update({
       where: { id: match.id },
-      data: { homePoints, awayPoints, played: true },
+      data: { homePoints: homeGoals, awayPoints: awayGoals, played: true },
+    });
+
+    results.push({
+      match: match.id,
+      home: `Team ${match.homeTeamId}`,
+      away: `Team ${match.awayTeamId}`,
+      homeGoals, awayGoals, homeRaw, awayRaw,
     });
   }
 
-  return NextResponse.json({ ok: true, teamsUpdated: teamPoints.size });
+  return NextResponse.json({ ok: true, teamsUpdated: teamRawPoints.size, results });
 }
