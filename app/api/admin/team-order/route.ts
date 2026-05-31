@@ -8,6 +8,7 @@ export async function GET() {
   if (!session?.isAdmin) return NextResponse.json({ error: "Nur Admin" }, { status: 403 });
 
   const teams = await prisma.team.findMany({
+    where: { user: { isAdmin: false } },
     orderBy: { sortOrder: "asc" },
     include: { user: { select: { username: true } } },
   });

@@ -79,7 +79,7 @@ async function main() {
 
   // Verify
   const teams = await client.execute(
-    `SELECT t.name, t.sortOrder, u.username FROM Team t JOIN User u ON t.userId = u.id ORDER BY t.sortOrder`
+    `SELECT t.name, t.sortOrder, u.username FROM Team t JOIN User u ON t.userId = u.id WHERE u.isAdmin = 0 ORDER BY t.sortOrder`
   );
   console.log("\n📋 Current team order:");
   for (const row of teams.rows) {
