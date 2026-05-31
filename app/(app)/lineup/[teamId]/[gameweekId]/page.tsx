@@ -21,6 +21,8 @@ export default function LineupViewPage() {
   const [gwNumber, setGwNumber] = useState<number | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [noLineup, setNoLineup] = useState(false);
+  const [isRollover, setIsRollover] = useState(false);
+  const [rolloverFromGw, setRolloverFromGw] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export default function LineupViewPage() {
       .then((d) => {
         setTeamName(d.teamName ?? "");
         setGwNumber(d.gameweekNumber);
+        setIsRollover(d.isRollover ?? false);
+        setRolloverFromGw(d.rolloverFromGw ?? null);
         if (d.lineup) {
           setSlots(d.lineup.slots);
         } else {
@@ -73,7 +77,16 @@ export default function LineupViewPage() {
 
       {!loading && noLineup && (
         <div className="bg-[#16213e] rounded-xl p-8 text-center">
-          <p className="text-gray-400">Keine Aufstellung für diesen Spieltag eingereicht.</p>
+          <p className="text-gray-400">Keine Aufstellung eingereicht – auch keine vorherige vorhanden.</p>
+        </div>
+      )}
+
+      {!loading && !noLineup && isRollover && (
+        <div className="flex items-center gap-2 bg-yellow-900/30 border border-yellow-700 rounded-lg px-4 py-2 mb-4 text-sm">
+          <span className="text-yellow-400">⟳</span>
+          <span className="text-yellow-300">
+            Keine neue Aufstellung – Aufstellung von Spieltag {rolloverFromGw} wird verwendet
+          </span>
         </div>
       )}
 
