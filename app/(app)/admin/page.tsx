@@ -233,10 +233,10 @@ export default function AdminSeite() {
             ))}
             <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer ml-2">
               <input type="checkbox" checked={showSold} onChange={(e) => setShowSold(e.target.checked)} className="accent-[#00ff87]" />
-              Vergebene anzeigen
+              Höchstbieter anzeigen
             </label>
             <span className="ml-auto text-xs text-gray-400">
-              {availCount} verfügbar · {soldCount} vergeben
+              {availCount} verfügbar · {soldCount} Höchstbieter
             </span>
           </div>
 
