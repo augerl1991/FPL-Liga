@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const season = await prisma.season.findUnique({ where: { id: seasonId } });
   if (!season) return NextResponse.json({ error: "Saison nicht gefunden" }, { status: 404 });
 
-  const teams = await prisma.team.findMany();
+  const teams = await prisma.team.findMany({ orderBy: { sortOrder: "asc" } });
   if (teams.length !== 10)
     return NextResponse.json({ error: `${teams.length} Teams gefunden, 10 benötigt` }, { status: 400 });
 

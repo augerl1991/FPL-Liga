@@ -33,6 +33,7 @@ model Team {
   id        Int    @id @default(autoincrement())
   name      String
   userId    Int    @unique
+  sortOrder Int    @default(0)
   user      User   @relation(fields: [userId], references: [id])
 
   squadPlayers  SquadPlayer[]
