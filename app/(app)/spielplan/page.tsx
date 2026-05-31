@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Match = { id: number; homeTeamId: number; awayTeamId: number; homePoints: number | null; awayPoints: number | null; played: boolean; homeTeam: { name: string }; awayTeam: { name: string } };
 type Gameweek = { id: number; number: number; matches: Match[] };
@@ -42,11 +43,21 @@ export default function SpielplanSeite() {
                 <div className="border-t border-gray-700">
                   {gw.matches.map((m) => (
                     <div key={m.id} className="flex items-center px-4 py-2 border-b border-gray-800 last:border-0">
-                      <span className="flex-1 text-right text-sm">{m.homeTeam.name}</span>
+                      <Link
+                        href={`/lineup/${m.homeTeamId}/${gw.id}`}
+                        className="flex-1 text-right text-sm hover:text-[#00ff87] transition-colors"
+                      >
+                        {m.homeTeam.name}
+                      </Link>
                       <span className="mx-4 text-center min-w-[60px] font-bold text-[#00ff87]">
                         {m.played ? `${m.homePoints} : ${m.awayPoints}` : "vs"}
                       </span>
-                      <span className="flex-1 text-left text-sm">{m.awayTeam.name}</span>
+                      <Link
+                        href={`/lineup/${m.awayTeamId}/${gw.id}`}
+                        className="flex-1 text-left text-sm hover:text-[#00ff87] transition-colors"
+                      >
+                        {m.awayTeam.name}
+                      </Link>
                     </div>
                   ))}
                 </div>
