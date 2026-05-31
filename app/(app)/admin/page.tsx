@@ -205,41 +205,57 @@ export default function AdminSeite() {
 
       {tab === "schedule" && (
         <div className="space-y-6">
-          {/* Schritt 1: Reihenfolge festlegen */}
+          {/* Schritt 1: Auktionsnummern festlegen */}
           <div className="bg-[#16213e] rounded-xl p-6">
-            <h2 className="font-semibold mb-1">Schritt 1: Teamreihenfolge festlegen</h2>
+            <h2 className="font-semibold mb-1">Schritt 1: Auktionsnummern vergeben (1–10)</h2>
             <p className="text-gray-400 text-sm mb-4">
-              Die Reihenfolge bestimmt den Spielplan (Berger-Algorithmus). Teams die nebeneinander stehen spielen öfter gegeneinander.
+              Die Nummer bestimmt den Spielplan. <span className="text-white">Spieltag 1:</span> Nr.1 vs Nr.10 · Nr.2 vs Nr.9 · Nr.3 vs Nr.8 · Nr.4 vs Nr.7 · Nr.5 vs Nr.6
             </p>
             {teamOrder.length === 0 ? (
               <p className="text-gray-500 text-sm">Noch keine Teams angelegt.</p>
             ) : (
-              <div className="space-y-2 max-w-md">
-                {teamOrder.map((team, i) => (
-                  <div key={team.id} className="flex items-center gap-3 bg-[#0f3460] rounded-lg px-4 py-2">
-                    <span className="text-[#00ff87] font-bold w-6 text-center">{i + 1}</span>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">{team.name}</div>
-                      <div className="text-gray-400 text-xs">{team.user.username}</div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Nummernvergabe */}
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Reihenfolge anpassen</p>
+                  {teamOrder.map((team, i) => (
+                    <div key={team.id} className="flex items-center gap-3 bg-[#0f3460] rounded-lg px-4 py-2">
+                      <span className="text-[#00ff87] font-bold text-lg w-8 text-center">{i + 1}</span>
+                      <div className="flex-1">
+                        <div className="font-semibold text-sm">{team.name}</div>
+                        <div className="text-gray-400 text-xs">{team.user.username}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => moveTeam(i, "up")} disabled={i === 0}
+                          className="px-2 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600 disabled:opacity-30">▲</button>
+                        <button onClick={() => moveTeam(i, "down")} disabled={i === teamOrder.length - 1}
+                          className="px-2 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600 disabled:opacity-30">▼</button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => moveTeam(i, "up")}
-                        disabled={i === 0}
-                        className="px-2 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600 disabled:opacity-30"
-                      >▲</button>
-                      <button
-                        onClick={() => moveTeam(i, "down")}
-                        disabled={i === teamOrder.length - 1}
-                        className="px-2 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600 disabled:opacity-30"
-                      >▼</button>
+                  ))}
+                  <button onClick={saveTeamOrder} className="mt-2 w-full bg-yellow-400 text-black font-bold py-2 rounded hover:bg-yellow-300">
+                    Nummern speichern
+                  </button>
+                  {orderMsg && <p className="text-sm text-green-400">{orderMsg}</p>}
+                </div>
+
+                {/* Vorschau Spieltag 1 */}
+                {teamOrder.length === 10 && (
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Vorschau Spieltag 1</p>
+                    <div className="space-y-2">
+                      {[0,1,2,3,4].map(i => (
+                        <div key={i} className="flex items-center gap-2 bg-[#0f3460] rounded px-3 py-2 text-sm">
+                          <span className="text-[#00ff87] font-bold w-4">{i+1}</span>
+                          <span className="flex-1">{teamOrder[i]?.name}</span>
+                          <span className="text-gray-400">vs</span>
+                          <span className="flex-1 text-right">{teamOrder[9-i]?.name}</span>
+                          <span className="text-[#00ff87] font-bold w-4 text-right">{10-i}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-                <button onClick={saveTeamOrder} className="mt-2 bg-yellow-400 text-black font-bold px-6 py-2 rounded hover:bg-yellow-300">
-                  Reihenfolge speichern
-                </button>
-                {orderMsg && <p className="text-sm text-green-400">{orderMsg}</p>}
+                )}
               </div>
             )}
           </div>
