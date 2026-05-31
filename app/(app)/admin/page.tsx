@@ -12,7 +12,7 @@ const POS_COLORS: Record<string, string> = { GK: "bg-yellow-600", DEF: "bg-blue-
 export default function AdminSeite() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "auction" | "teams" | "schedule" | "sync">("users");
+  const [tab, setTab] = useState<"users" | "auction" | "teams" | "lineups" | "schedule" | "sync">("users");
 
   // User-Erstellung
   const [newUsername, setNewUsername] = useState("");
@@ -47,6 +47,16 @@ export default function AdminSeite() {
   const [syncMsg, setSyncMsg] = useState("");
   const [gwNum, setGwNum] = useState("");
 
+  // Lineup-Status
+  type LineupTeam = {
+    teamId: number; teamName: string; username: string;
+    currentGw: { number: number; submitted: boolean; submittedAt: string | null } | null;
+    totalSubmitted: number; totalGameweeks: number;
+    history: { gwNumber: number; submitted: boolean; submittedAt: string | null }[];
+  };
+  const [lineupStatus, setLineupStatus] = useState<{ currentGwNumber: number | null; teams: LineupTeam[] } | null>(null);
+  const [lineupHistoryTeam, setLineupHistoryTeam] = useState<number | null>(null);
+
   // Neue Saison
   const [newSeasonName, setNewSeasonName] = useState("");
   const [newSeasonMsg, setNewSeasonMsg] = useState("");
@@ -73,6 +83,11 @@ export default function AdminSeite() {
       fetch("/api/admin/team-order")
         .then((r) => r.json())
         .then((d) => { if (Array.isArray(d)) { setAllTeams(d); setTeamIdx(0); } });
+    }
+    if (tab === "lineups") {
+      fetch("/api/admin/lineup-status")
+        .then((r) => r.json())
+        .then((d) => d.teams && setLineupStatus(d));
     }
     if (tab === "schedule") {
       fetch("/api/admin/team-order").then((r) => r.json()).then((d) => Array.isArray(d) && setTeamOrder(d));
@@ -225,6 +240,7 @@ export default function AdminSeite() {
     { key: "users", label: "Nutzer anlegen" },
     { key: "auction", label: "Auktion" },
     { key: "teams", label: "Teams" },
+    { key: "lineups", label: "Aufstellungen" },
     { key: "schedule", label: "Spielplan" },
     { key: "sync", label: "FPL Sync" },
   ] as const;
@@ -489,6 +505,105 @@ export default function AdminSeite() {
                   </>
                 );
               })()}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Aufstellungen ── */}
+      {tab === "lineups" && (
+        <div>
+          {!lineupStatus ? (
+            <p className="text-gray-400 text-sm">Lädt…</p>
+          ) : (
+            <>
+              <div className="bg-[#16213e] rounded-xl overflow-hidden mb-6">
+                <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+                  <h2 className="font-semibold">
+                    Spieltag {lineupStatus.currentGwNumber ?? "–"} – Abgaben
+                  </h2>
+                  <span className="text-xs text-gray-400">
+                    {lineupStatus.teams.filter((t) => t.currentGw?.submitted).length} / {lineupStatus.teams.length} eingereicht
+                  </span>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-400 uppercase border-b border-gray-700">
+                      <th className="px-4 py-2 text-left">Team</th>
+                      <th className="px-4 py-2 text-center">Akt. GW</th>
+                      <th className="px-4 py-2 text-center">Uhrzeit</th>
+                      <th className="px-4 py-2 text-center">Gesamt</th>
+                      <th className="px-4 py-2 text-center w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineupStatus.teams.map((t) => {
+                      const submitted = t.currentGw?.submitted ?? false;
+                      const submittedAt = t.currentGw?.submittedAt
+                        ? new Date(t.currentGw.submittedAt).toLocaleString("de-AT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                        : null;
+                      const showHistory = lineupHistoryTeam === t.teamId;
+                      return (
+                        <>
+                          <tr key={t.teamId} className="border-t border-gray-700/50 hover:bg-[#0f3460]/40 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="font-semibold">{t.teamName}</div>
+                              <div className="text-xs text-gray-400">{t.username}</div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {submitted ? (
+                                <span className="text-[#00ff87] text-lg">✓</span>
+                              ) : (
+                                <span className="text-red-400 text-lg">✗</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center text-xs text-gray-400">
+                              {submittedAt ?? "–"}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`font-bold ${t.totalSubmitted === t.totalGameweeks ? "text-[#00ff87]" : "text-white"}`}>
+                                {t.totalSubmitted}
+                              </span>
+                              <span className="text-gray-500 text-xs"> / {t.totalGameweeks}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => setLineupHistoryTeam(showHistory ? null : t.teamId)}
+                                className="text-xs text-gray-400 hover:text-white transition-colors"
+                                title="Verlauf anzeigen"
+                              >
+                                {showHistory ? "▲" : "▼"}
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Verlauf-Zeile */}
+                          {showHistory && (
+                            <tr key={`${t.teamId}-history`} className="bg-[#0a1628]">
+                              <td colSpan={5} className="px-4 py-3">
+                                <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Verlauf aller Spieltage</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {t.history.filter((h) => h.gwNumber <= (lineupStatus.currentGwNumber ?? 38)).map((h) => (
+                                    <div
+                                      key={h.gwNumber}
+                                      title={h.submittedAt ? new Date(h.submittedAt).toLocaleString("de-AT") : `GW ${h.gwNumber} – nicht eingereicht`}
+                                      className={`w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold ${
+                                        h.submitted ? "bg-[#00ff87] text-black" : "bg-red-900/60 text-red-400"
+                                      }`}
+                                    >
+                                      {h.gwNumber}
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </div>
