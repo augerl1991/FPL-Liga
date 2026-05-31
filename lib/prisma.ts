@@ -2,9 +2,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+declare global {
+  // eslint-disable-next-line no-var
+  var _prisma: PrismaClient | undefined;
+}
 
-function getPrisma(): PrismaClient {
+function createPrismaClient(): PrismaClient {
   if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
     const { createClient } = require("@libsql/client");
     const { PrismaLibSQL } = require("@prisma/adapter-libsql");
@@ -18,6 +21,17 @@ function getPrisma(): PrismaClient {
   return new PrismaClient();
 }
 
-export const prisma = globalForPrisma.prisma || getPrisma();
+// Lazy singleton – wird erst beim ersten Aufruf erstellt, nicht beim Import
+export function getPrismaClient(): PrismaClient {
+  if (!global._prisma) {
+    global._prisma = createPrismaClient();
+  }
+  return global._prisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Für direkten Import (bestehende Routen)
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return (getPrismaClient() as any)[prop];
+  },
+});
