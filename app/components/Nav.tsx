@@ -26,7 +26,9 @@ export default function Nav() {
             <Link href="/admin" className="hover:text-[#00ff87] transition-colors text-yellow-400">Admin</Link>
           )}
           <div className="ml-auto flex items-center gap-4">
-            <span className="text-gray-400 text-sm">{user.username} · {user.team?.name}</span>
+            <Link href="/profil" className="text-gray-400 text-sm hover:text-white transition-colors">
+              {user.username} · {user.team?.name}
+            </Link>
             <button onClick={logout} className="text-sm text-gray-400 hover:text-white transition-colors">
               Abmelden
             </button>

@@ -43,3 +43,6 @@ next-env.d.ts
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Auction data (private, nur lokal)
+scripts/auction-data.json

@@ -10,7 +10,11 @@
     "lint": "next lint",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "seed": "npx tsx scripts/seed-admin.ts"
+    "seed": "npx tsx scripts/seed-admin.ts",
+    "seed:users": "npx tsx --env-file=.env scripts/seed-users.ts",
+    "seed:fpl": "npx tsx --env-file=.env scripts/seed-fpl.ts",
+    "seed:squads": "npx tsx --env-file=.env scripts/seed-squads.ts",
+    "migrate:turso": "npx tsx --env-file=.env scripts/migrate-turso.ts"
   },
   "dependencies": {
     "@libsql/client": "0.8.0",
