@@ -47,6 +47,12 @@ export default function AdminSeite() {
   const [syncMsg, setSyncMsg] = useState("");
   const [gwNum, setGwNum] = useState("");
 
+  // Neue Saison
+  const [newSeasonName, setNewSeasonName] = useState("");
+  const [newSeasonMsg, setNewSeasonMsg] = useState("");
+  const [newSeasonLoading, setNewSeasonLoading] = useState(false);
+  const [newSeasonConfirm, setNewSeasonConfirm] = useState(false);
+
   useEffect(() => {
     if (!loading && !user?.isAdmin) router.push("/tabelle");
   }, [user, loading, router]);
@@ -169,6 +175,25 @@ export default function AdminSeite() {
     const res = await fetch("/api/fpl/sync", { method: "POST" });
     const d = await res.json();
     setSyncMsg(res.ok ? `✓ ${d.upserted} Spieler synchronisiert` : `✗ ${d.error}`);
+  }
+
+  async function startNewSeason() {
+    if (!newSeasonConfirm) { setNewSeasonConfirm(true); return; }
+    setNewSeasonLoading(true);
+    setNewSeasonMsg("Lädt FPL-Spieler und setzt Kader zurück…");
+    const res = await fetch("/api/admin/new-season", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seasonName: newSeasonName }),
+    });
+    const d = await res.json();
+    setNewSeasonLoading(false);
+    setNewSeasonConfirm(false);
+    if (res.ok) {
+      setNewSeasonMsg(`✓ Saison "${d.seasonName}" gestartet · ${d.squadPlayersDeleted} Kaderspieler gelöscht · ${d.playersUpdated} FPL-Spieler aktualisiert`);
+    } else {
+      setNewSeasonMsg(`✗ ${d.error}`);
+    }
   }
 
   async function syncGW() {
@@ -537,21 +562,64 @@ export default function AdminSeite() {
 
       {/* ── FPL Sync ── */}
       {tab === "sync" && (
-        <div className="bg-[#16213e] rounded-xl p-6 max-w-md space-y-6">
-          <div>
+        <div className="space-y-4 max-w-lg">
+
+          {/* Neue Saison */}
+          <div className="bg-red-950/40 border border-red-800 rounded-xl p-6">
+            <h2 className="font-bold text-red-400 mb-1">🔄 Neue Saison starten</h2>
+            <p className="text-gray-400 text-sm mb-4">
+              Löscht alle Kader, leert die Auktion und holt die aktuelle Spielerliste von der FPL-API.
+              Die Teams und Nutzer bleiben erhalten. Alte Saisondaten bleiben als Archiv.
+            </p>
+            <div className="flex gap-2 mb-3">
+              <input
+                value={newSeasonName}
+                onChange={(e) => { setNewSeasonName(e.target.value); setNewSeasonConfirm(false); setNewSeasonMsg(""); }}
+                placeholder="z.B. 2026/27"
+                className="flex-1 bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white"
+              />
+              <button
+                onClick={startNewSeason}
+                disabled={!newSeasonName.trim() || newSeasonLoading}
+                className={`font-bold px-4 py-2 rounded transition-colors disabled:opacity-40 ${
+                  newSeasonConfirm
+                    ? "bg-red-500 hover:bg-red-400 text-white animate-pulse"
+                    : "bg-red-700 hover:bg-red-600 text-white"
+                }`}
+              >
+                {newSeasonLoading ? "Läuft…" : newSeasonConfirm ? "⚠ Wirklich starten?" : "Saison starten"}
+              </button>
+            </div>
+            {newSeasonConfirm && !newSeasonLoading && (
+              <p className="text-yellow-400 text-xs mb-2">
+                Alle 10 Kader werden geleert! Nochmal klicken zum Bestätigen.
+              </p>
+            )}
+            {newSeasonMsg && (
+              <p className={`text-sm ${newSeasonMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>
+                {newSeasonMsg}
+              </p>
+            )}
+          </div>
+
+          {/* FPL Spieler-Sync */}
+          <div className="bg-[#16213e] rounded-xl p-6">
             <h2 className="font-semibold mb-2">FPL Spielerdaten synchronisieren</h2>
-            <p className="text-gray-400 text-sm mb-4">Holt alle Spieler + Punkte von der FPL-API</p>
+            <p className="text-gray-400 text-sm mb-4">Aktualisiert Spielernamen, Vereine und Punkte (ohne Kader zu leeren)</p>
             <button onClick={syncPlayers} className="bg-yellow-400 text-black font-bold px-6 py-2 rounded hover:bg-yellow-300">
               Spieler synchronisieren
             </button>
           </div>
-          <div>
+
+          {/* Spieltag-Punkte */}
+          <div className="bg-[#16213e] rounded-xl p-6">
             <h2 className="font-semibold mb-2">Spieltag-Punkte eintragen</h2>
             <div className="flex gap-2">
               <input value={gwNum} onChange={(e) => setGwNum(e.target.value)} type="number" min="1" max="38" placeholder="GW-Nummer" className="flex-1 bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white" />
               <button onClick={syncGW} className="bg-yellow-400 text-black font-bold px-4 py-2 rounded hover:bg-yellow-300">Sync</button>
             </div>
           </div>
+
           {syncMsg && <p className="text-sm text-green-400">{syncMsg}</p>}
         </div>
       )}
