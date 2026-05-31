@@ -1,0 +1,193 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./fpl-liga.db"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  team         Team?
+}
+
+model Season {
+  id        Int      @id @default(autoincrement())
+  name      String
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  gameweeks        Gameweek[]
+  matches          Match[]
+  transferWindows  TransferWindow[]
+}
+
+model Team {
+  id        Int    @id @default(autoincrement())
+  name      String
+  userId    Int    @unique
+  user      User   @relation(fields: [userId], references: [id])
+
+  squadPlayers  SquadPlayer[]
+  homeMatches   Match[]       @relation("HomeTeam")
+  awayMatches   Match[]       @relation("AwayTeam")
+  lineups       Lineup[]
+  transfersFrom Transfer[]    @relation("FromTeam")
+  transfersTo   Transfer[]    @relation("ToTeam")
+  auctionBids   AuctionBid[]
+}
+
+model FplPlayer {
+  id           Int     @id
+  webName      String
+  firstName    String
+  lastName     String
+  position     String
+  teamName     String
+  price        Int
+  totalPoints  Int     @default(0)
+  updatedAt    DateTime @default(now())
+
+  squadPlayers  SquadPlayer[]
+  auctionBids   AuctionBid[]
+  auctionResult AuctionResult?
+  lineupSlots   LineupSlot[]
+  weeklyPoints  WeeklyPoints[]
+}
+
+model SquadPlayer {
+  id          Int    @id @default(autoincrement())
+  teamId      Int
+  fplPlayerId Int
+  boughtFor   Int
+
+  team        Team      @relation(fields: [teamId], references: [id])
+  fplPlayer   FplPlayer @relation(fields: [fplPlayerId], references: [id])
+
+  @@unique([teamId, fplPlayerId])
+}
+
+model Gameweek {
+  id         Int      @id @default(autoincrement())
+  seasonId   Int
+  number     Int
+  season     Season   @relation(fields: [seasonId], references: [id])
+  matches    Match[]
+  lineups    Lineup[]
+  weeklyPoints WeeklyPoints[]
+  deadlines  GameweekDeadline[]
+
+  @@unique([seasonId, number])
+}
+
+model GameweekDeadline {
+  id          Int      @id @default(autoincrement())
+  gameweekId  Int
+  deadline    DateTime
+  label       String
+  gameweek    Gameweek @relation(fields: [gameweekId], references: [id])
+}
+
+model Match {
+  id           Int      @id @default(autoincrement())
+  seasonId     Int
+  gameweekId   Int
+  homeTeamId   Int
+  awayTeamId   Int
+  homePoints   Int?
+  awayPoints   Int?
+  played       Boolean  @default(false)
+
+  season       Season   @relation(fields: [seasonId], references: [id])
+  gameweek     Gameweek @relation(fields: [gameweekId], references: [id])
+  homeTeam     Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam     Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+}
+
+model Lineup {
+  id          Int      @id @default(autoincrement())
+  teamId      Int
+  gameweekId  Int
+  submittedAt DateTime @default(now())
+
+  team        Team     @relation(fields: [teamId], references: [id])
+  gameweek    Gameweek @relation(fields: [gameweekId], references: [id])
+  slots       LineupSlot[]
+
+  @@unique([teamId, gameweekId])
+}
+
+model LineupSlot {
+  id            Int     @id @default(autoincrement())
+  lineupId      Int
+  fplPlayerId   Int
+  position      Int
+  isCaptain     Boolean @default(false)
+  isViceCaptain Boolean @default(false)
+
+  lineup      Lineup    @relation(fields: [lineupId], references: [id])
+  fplPlayer   FplPlayer @relation(fields: [fplPlayerId], references: [id])
+}
+
+model WeeklyPoints {
+  id          Int @id @default(autoincrement())
+  fplPlayerId Int
+  gameweekId  Int
+  points      Int
+
+  fplPlayer   FplPlayer @relation(fields: [fplPlayerId], references: [id])
+  gameweek    Gameweek  @relation(fields: [gameweekId], references: [id])
+
+  @@unique([fplPlayerId, gameweekId])
+}
+
+model TransferWindow {
+  id        Int      @id @default(autoincrement())
+  seasonId  Int
+  openFrom  DateTime
+  openUntil DateTime
+  label     String
+  season    Season   @relation(fields: [seasonId], references: [id])
+  transfers Transfer[]
+}
+
+model Transfer {
+  id               Int      @id @default(autoincrement())
+  transferWindowId Int
+  fromTeamId       Int?
+  toTeamId         Int
+  fplPlayerId      Int
+  price            Int
+  createdAt        DateTime @default(now())
+
+  transferWindow  TransferWindow @relation(fields: [transferWindowId], references: [id])
+  fromTeam        Team?          @relation("FromTeam", fields: [fromTeamId], references: [id])
+  toTeam          Team           @relation("ToTeam", fields: [toTeamId], references: [id])
+}
+
+model AuctionBid {
+  id          Int      @id @default(autoincrement())
+  teamId      Int
+  fplPlayerId Int
+  amount      Int
+  createdAt   DateTime @default(now())
+
+  team        Team      @relation(fields: [teamId], references: [id])
+  fplPlayer   FplPlayer @relation(fields: [fplPlayerId], references: [id])
+}
+
+model AuctionResult {
+  id          Int @id @default(autoincrement())
+  fplPlayerId Int @unique
+  teamId      Int
+  finalPrice  Int
+
+  fplPlayer   FplPlayer @relation(fields: [fplPlayerId], references: [id])
+}
