@@ -4,7 +4,7 @@ import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 
 type Team = { id: number; name: string; sortOrder: number; user: { username: string } };
-type Player = { id: number; webName: string; position: string; teamName: string; price: number; auctionResult: { team: { name: string } } | null };
+type Player = { id: number; webName: string; position: string; teamName: string; totalPoints: number; auctionResult: { team: { name: string } } | null };
 
 export default function AdminSeite() {
   const { user, loading } = useAuth();
@@ -178,10 +178,10 @@ export default function AdminSeite() {
               <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(e.target.value)} required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white">
                 <option value="">Spieler wählen...</option>
                 {players.filter((p) => !p.auctionResult).map((p) => (
-                  <option key={p.id} value={p.id}>{p.webName} ({p.position} · {p.teamName} · {(p.price / 10).toFixed(1)}m)</option>
+                  <option key={p.id} value={p.id}>{p.webName} ({p.position} · {p.teamName})</option>
                 ))}
               </select>
-              <input value={auctionPrice} onChange={(e) => setAuctionPrice(e.target.value)} type="number" placeholder="Auktionspreis (Mio)" required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white" />
+              <input value={auctionPrice} onChange={(e) => setAuctionPrice(e.target.value)} type="number" min="1" placeholder="Gebot (Mio, Start: 1)" required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white" />
               <button type="submit" className="w-full bg-yellow-400 text-black font-bold py-2 rounded hover:bg-yellow-300">Zuweisen</button>
               {auctionMsg && <p className="text-sm text-green-400">{auctionMsg}</p>}
             </form>
@@ -193,7 +193,7 @@ export default function AdminSeite() {
                     <span className="text-xs bg-[#38003c] px-1 rounded">{p.position}</span>
                     <span className="flex-1">{p.webName}</span>
                     <span className="text-xs text-gray-400">{p.teamName}</span>
-                    <span className="text-xs text-[#00ff87]">{(p.price / 10).toFixed(1)}m</span>
+                    <span className="text-xs text-[#00ff87]">{p.totalPoints ?? ""}</span>
                     {p.auctionResult && <span className="text-xs text-gray-500">{p.auctionResult.team.name}</span>}
                   </div>
                 ))}
@@ -278,7 +278,7 @@ export default function AdminSeite() {
         <div className="bg-[#16213e] rounded-xl p-6 max-w-md space-y-6">
           <div>
             <h2 className="font-semibold mb-2">FPL Spielerdaten synchronisieren</h2>
-            <p className="text-gray-400 text-sm mb-4">Holt alle Spieler + Preise von der FPL-API</p>
+            <p className="text-gray-400 text-sm mb-4">Holt alle Spieler + Punkte von der FPL-API</p>
             <button onClick={syncPlayers} className="bg-yellow-400 text-black font-bold px-6 py-2 rounded hover:bg-yellow-300">
               Spieler synchronisieren
             </button>

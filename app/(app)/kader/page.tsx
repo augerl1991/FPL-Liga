@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 type SquadPlayer = {
   id: number;
   boughtFor: number;
-  fplPlayer: { id: number; webName: string; firstName: string; lastName: string; position: string; teamName: string; price: number; totalPoints: number };
+  fplPlayer: { id: number; webName: string; firstName: string; lastName: string; position: string; teamName: string; totalPoints: number };
 };
 
 const POS_ORDER = ["GK", "DEF", "MID", "FWD"];
@@ -34,11 +34,19 @@ export default function KaderSeite() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#00ff87]">Mein Kader</h1>
-        <div className="bg-[#38003c] px-4 py-2 rounded-lg text-sm">
-          <span className="text-gray-400">Restbudget: </span>
-          <span className="text-[#00ff87] font-bold">{budget} Mio</span>
-          <span className="text-gray-400 ml-4">Spieler: </span>
-          <span className="font-bold">{squad.length}/25</span>
+        <div className="bg-[#38003c] px-4 py-2 rounded-lg text-sm flex items-center gap-4">
+          <span>
+            <span className="text-gray-400">Ausgegeben: </span>
+            <span className="text-yellow-400 font-bold">{560 - budget} Mio</span>
+          </span>
+          <span>
+            <span className="text-gray-400">Restbudget: </span>
+            <span className="text-[#00ff87] font-bold">{budget} Mio</span>
+          </span>
+          <span>
+            <span className="text-gray-400">Spieler: </span>
+            <span className="font-bold">{squad.length}/25</span>
+          </span>
         </div>
       </div>
 
@@ -59,9 +67,8 @@ export default function KaderSeite() {
                         <div className="font-semibold">{sp.fplPlayer.webName}</div>
                         <div className="text-gray-400 text-xs">{sp.fplPlayer.teamName}</div>
                       </td>
-                      <td className="px-4 py-3 text-center text-gray-400">{(sp.fplPlayer.price / 10).toFixed(1)}m</td>
                       <td className="px-4 py-3 text-center text-[#00ff87]">{sp.fplPlayer.totalPoints} Pkt</td>
-                      <td className="px-4 py-3 text-center text-yellow-400 text-xs">Gekauft: {sp.boughtFor}m</td>
+                      <td className="px-4 py-3 text-center text-yellow-400 font-semibold">{sp.boughtFor} Mio</td>
                     </tr>
                   ))}
                 </tbody>
