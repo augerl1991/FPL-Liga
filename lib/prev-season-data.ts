@@ -279,7 +279,27 @@ export const PREV_SEASON: HistoricGW[] = [
   ]},
 ];
 
-// ── Alle 11 Liga-Saisonen von 2014/15 bis 2025/26 ──────────────────────────
+// ── Gewinnertafel ──────────────────────────────────────────────────────────
+// image: Pfad relativ zu /public, z.B. "/images/pokal/2025-26.jpg"
+export type SeasonWinner = { season: string; winner: string; image?: string };
+
+export const SEASON_WINNERS: SeasonWinner[] = [
+  { season: "2014/15", winner: "–" },
+  { season: "2015/16", winner: "–" },
+  { season: "2016/17", winner: "–" },
+  { season: "2017/18", winner: "–" },
+  { season: "2018/19", winner: "–" },
+  { season: "2019/20", winner: "–" },
+  { season: "2020/21", winner: "–" },
+  { season: "2021/22", winner: "–" },
+  { season: "2022/23", winner: "–" },
+  { season: "2023/24", winner: "–" },
+  { season: "2024/25", winner: "–" },
+  // Bild: Datei nach /public/images/pokal/2025-26.jpg kopieren
+  { season: "2025/26", winner: "–", image: "/images/pokal/2025-26.jpg" },
+];
+
+// ── Alle Liga-Saisonen von 2014/15 bis 2025/26 ────────────────────────────
 export type Season = { label: string; data: HistoricGW[] };
 
 export const SEASONS: Season[] = [

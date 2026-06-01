@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { SEASONS } from "@/lib/prev-season-data";
+import Image from "next/image";
+import { SEASONS, SEASON_WINNERS } from "@/lib/prev-season-data";
 
 /* ── Live-FPL-Typen ── */
 type Fixture = {
@@ -23,15 +24,17 @@ export default function PLSpielplanSeite() {
   const [plMode, setPlMode] = useState<"history" | "live" | null>(null);
 
   /* ── History-State ── */
-  // Neueste Saison mit Daten als Standard; fallback: letzte im Array
   const defaultSeasonIdx = (() => {
     const last = [...SEASONS].reverse().findIndex((s) => s.data.length > 0);
     return last >= 0 ? SEASONS.length - 1 - last : SEASONS.length - 1;
   })();
+  const [historyView, setHistoryView] = useState<"spielplan" | "gewinner">("spielplan");
   const [seasonIdx, setSeasonIdx] = useState(defaultSeasonIdx);
   const [historyGW, setHistoryGW] = useState(1);
   const historyRef = useRef<HTMLDivElement>(null);
   const seasonRef = useRef<HTMLButtonElement>(null);
+  // Hover-Bild für Gewinnertafel: { season, x, y }
+  const [hoverImg, setHoverImg] = useState<{ src: string; x: number; y: number } | null>(null);
 
   /* ── Live-State ── */
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
@@ -97,106 +100,174 @@ export default function PLSpielplanSeite() {
 
     return (
       <div>
+        {/* Hover-Bild (fixed, folgt der Maus) */}
+        {hoverImg && (
+          <div
+            className="fixed z-50 pointer-events-none"
+            style={{ left: hoverImg.x + 20, top: hoverImg.y - 10 }}
+          >
+            <div className="glass rounded-2xl overflow-hidden shadow-2xl ring-2 ring-[#00ff87]/40"
+              style={{ width: 280, height: 210 }}>
+              <Image
+                src={hoverImg.src}
+                alt="Pokalübergabe"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          </div>
+        )}
+
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Historie</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Ergebnisse aller Saisonen</p>
+          <p className="text-xs text-gray-500 mt-0.5">Ergebnisse &amp; Gewinner aller Saisonen</p>
         </div>
 
-        {/* Saison-Tabs */}
-        <div className="overflow-x-auto pb-2 mb-5 no-scrollbar">
-          <div className="flex gap-1.5 w-max">
-            {SEASONS.map((s, i) => {
-              const active = i === seasonIdx;
-              return (
-                <button
-                  key={s.label}
-                  ref={active ? seasonRef : null}
-                  onClick={() => selectSeason(i)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    active
-                      ? "bg-[#00ff87] text-black"
-                      : s.data.length > 0
-                      ? "glass text-white hover:bg-[#0f3460]"
-                      : "glass text-gray-500 hover:text-gray-300"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
+        {/* View-Toggle: Spielplan | Gewinnertafel */}
+        <div className="flex gap-2 mb-5">
+          {(["spielplan", "gewinner"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setHistoryView(v)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                historyView === v ? "bg-[#00ff87] text-black" : "glass-soft text-gray-300 hover:text-white"
+              }`}
+            >
+              {v === "spielplan" ? "📅 Spielplan" : "🏆 Gewinnertafel"}
+            </button>
+          ))}
         </div>
 
-        {/* Spieltag-Tabs (nur wenn Daten vorhanden) */}
-        {!hasData ? (
-          <div className="glass rounded-xl px-6 py-12 text-center text-gray-500">
-            <div className="text-4xl mb-3">📂</div>
-            <p className="font-semibold text-gray-400">Keine Daten für {season.label}</p>
-            <p className="text-sm mt-1">Die Ergebnisse dieser Saison wurden noch nicht eingetragen.</p>
+        {/* ── GEWINNERTAFEL ── */}
+        {historyView === "gewinner" && (
+          <div className="glass rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-700">
+              <span className="font-semibold text-white">Saisonsieger</span>
+              <span className="text-xs text-gray-500 ml-2">Hover über den Sieger für das Foto</span>
+            </div>
+            {[...SEASON_WINNERS].reverse().map((w) => (
+              <div
+                key={w.season}
+                className="flex items-center gap-4 px-4 py-3 border-b border-gray-800 last:border-0 hover:bg-white/5 transition-colors"
+              >
+                <span className="text-sm text-gray-500 w-16 shrink-0">{w.season}</span>
+                {w.image ? (
+                  <span
+                    className="text-sm font-semibold text-[#00ff87] cursor-default flex items-center gap-1.5"
+                    onMouseMove={(e) => setHoverImg({ src: w.image!, x: e.clientX, y: e.clientY })}
+                    onMouseLeave={() => setHoverImg(null)}
+                  >
+                    🏆 {w.winner}
+                    <span className="text-[10px] text-gray-500 font-normal">(Foto)</span>
+                  </span>
+                ) : (
+                  <span className={`text-sm font-semibold ${w.winner === "–" ? "text-gray-600" : "text-white"}`}>
+                    {w.winner === "–" ? <span className="italic text-gray-600">noch nicht eingetragen</span> : <>🏆 {w.winner}</>}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
-        ) : (
+        )}
+
+        {/* ── SPIELPLAN ── */}
+        {historyView === "spielplan" && (
           <>
-            <div className="overflow-x-auto pb-2 mb-6 no-scrollbar">
+            {/* Saison-Tabs */}
+            <div className="overflow-x-auto pb-2 mb-5 no-scrollbar">
               <div className="flex gap-1.5 w-max">
-                {season.data.map(({ gw }) => {
-                  const gwMatches = season.data.find((g) => g.gw === gw)?.matches ?? [];
-                  const allDone = gwMatches.every((m) => m.hs !== null && m.as !== null);
-                  const isCurrent = gw === historyGW;
+                {SEASONS.map((s, i) => {
+                  const active = i === seasonIdx;
                   return (
-                    <div key={gw} ref={isCurrent ? historyRef : null}>
-                      <button
-                        onClick={() => setHistoryGW(gw)}
-                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
-                          isCurrent ? "bg-[#04f5ff] text-black"
-                            : allDone ? "glass text-gray-400"
-                            : "glass hover:bg-[#0f3460] text-white"
-                        }`}
-                      >
-                        GW {gw}
-                      </button>
-                    </div>
+                    <button
+                      key={s.label}
+                      ref={active ? seasonRef : null}
+                      onClick={() => selectSeason(i)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+                        active
+                          ? "bg-[#00ff87] text-black"
+                          : s.data.length > 0
+                          ? "glass text-white hover:bg-[#0f3460]"
+                          : "glass text-gray-500 hover:text-gray-300"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
                   );
                 })}
               </div>
             </div>
 
-            {gwData && (
-              <div className="glass rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-                  <span className="font-semibold text-white">
-                    {season.label} · Spieltag {historyGW}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {gwData.matches.filter((m) => m.hs !== null && m.as !== null).length} / {gwData.matches.length} gespielt
-                  </span>
-                </div>
-                <div>
-                  {gwData.matches.map((m, i) => {
-                    const finished = m.hs !== null && m.as !== null;
-                    const homeWin = finished && m.hs! > m.as!;
-                    const awayWin = finished && m.as! > m.hs!;
-                    return (
-                      <div key={i} className="flex items-center px-4 py-3 border-b border-gray-800 last:border-0">
-                        <div className="flex-1 text-right">
-                          <span className={`text-sm font-semibold ${homeWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
-                            {m.home}
-                          </span>
-                        </div>
-                        <div className="mx-4 min-w-[64px] text-center">
-                          {finished
-                            ? <span className="text-lg font-bold text-[#00ff87]">{m.hs} : {m.as}</span>
-                            : <span className="text-xs text-gray-500">vs</span>}
-                        </div>
-                        <div className="flex-1 text-left">
-                          <span className={`text-sm font-semibold ${awayWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
-                            {m.away}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            {!hasData ? (
+              <div className="glass rounded-xl px-6 py-12 text-center">
+                <div className="text-4xl mb-3">📂</div>
+                <p className="font-semibold text-gray-400">Keine Daten für {season.label}</p>
+                <p className="text-sm mt-1 text-gray-600">Die Ergebnisse dieser Saison wurden noch nicht eingetragen.</p>
               </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto pb-2 mb-6 no-scrollbar">
+                  <div className="flex gap-1.5 w-max">
+                    {season.data.map(({ gw }) => {
+                      const gwMatches = season.data.find((g) => g.gw === gw)?.matches ?? [];
+                      const allDone = gwMatches.every((m) => m.hs !== null && m.as !== null);
+                      const isCurrent = gw === historyGW;
+                      return (
+                        <div key={gw} ref={isCurrent ? historyRef : null}>
+                          <button
+                            onClick={() => setHistoryGW(gw)}
+                            className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
+                              isCurrent ? "bg-[#04f5ff] text-black"
+                                : allDone ? "glass text-gray-400"
+                                : "glass hover:bg-[#0f3460] text-white"
+                            }`}
+                          >
+                            GW {gw}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {gwData && (
+                  <div className="glass rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+                      <span className="font-semibold text-white">{season.label} · Spieltag {historyGW}</span>
+                      <span className="text-xs text-gray-400">
+                        {gwData.matches.filter((m) => m.hs !== null && m.as !== null).length} / {gwData.matches.length} gespielt
+                      </span>
+                    </div>
+                    <div>
+                      {gwData.matches.map((m, i) => {
+                        const finished = m.hs !== null && m.as !== null;
+                        const homeWin = finished && m.hs! > m.as!;
+                        const awayWin = finished && m.as! > m.hs!;
+                        return (
+                          <div key={i} className="flex items-center px-4 py-3 border-b border-gray-800 last:border-0">
+                            <div className="flex-1 text-right">
+                              <span className={`text-sm font-semibold ${homeWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
+                                {m.home}
+                              </span>
+                            </div>
+                            <div className="mx-4 min-w-[64px] text-center">
+                              {finished
+                                ? <span className="text-lg font-bold text-[#00ff87]">{m.hs} : {m.as}</span>
+                                : <span className="text-xs text-gray-500">vs</span>}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <span className={`text-sm font-semibold ${awayWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
+                                {m.away}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
