@@ -15,7 +15,7 @@ export default function Nav() {
 
   return (
     <nav className="bg-[#38003c] px-6 py-3 flex items-center gap-6 shadow-lg">
-      <span className="text-[#00ff87] font-bold text-lg">FPL Liga</span>
+      <Link href="/start" className="text-[#00ff87] font-bold text-lg hover:opacity-80 transition-opacity">FPL Liga</Link>
       {user && (
         <>
           <Link href="/tabelle" className="hover:text-[#00ff87] transition-colors">Tabelle</Link>
