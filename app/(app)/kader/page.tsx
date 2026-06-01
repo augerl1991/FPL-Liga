@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/app/providers";
 
 type SquadPlayer = {
   id: number;
@@ -14,11 +15,14 @@ const POS_ORDER = ["GK", "DEF", "MID", "FWD"];
 const POS_LABELS: Record<string, string> = { GK: "Torhüter", DEF: "Abwehr", MID: "Mittelfeld", FWD: "Sturm" };
 
 export default function KaderSeite() {
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
   const [budget, setBudget] = useState(0);
   const [gameweeks, setGameweeks] = useState<Gameweek[]>([]);
   const [points, setPoints] = useState<Record<number, Record<number, number>>>({});
   const [showCount, setShowCount] = useState(5);
+  const [savingCount, setSavingCount] = useState(false);
 
   useEffect(() => {
     fetch("/api/auction")
@@ -37,7 +41,25 @@ export default function KaderSeite() {
           setPoints(data.points ?? {});
         }
       });
+    fetch("/api/admin/config?key=kaderGwCount")
+      .then((r) => r.json())
+      .then((data) => {
+        const n = parseInt(data?.value ?? "5");
+        if (n >= 1 && n <= 5) setShowCount(n);
+      });
   }, []);
+
+  // Nur der Admin darf die globale Anzahl ändern; gilt für alle Spieler.
+  function changeCount(n: number) {
+    if (!isAdmin || n === showCount) return;
+    setShowCount(n);
+    setSavingCount(true);
+    fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "kaderGwCount", value: String(n) }),
+    }).finally(() => setSavingCount(false));
+  }
 
   const byPosition = POS_ORDER.map((pos) => ({
     pos,
@@ -68,23 +90,27 @@ export default function KaderSeite() {
         </div>
       </div>
 
-      {/* Auswahl: wie viele der letzten Spieltage anzeigen */}
-      <div className="flex items-center gap-2 mb-4 text-sm">
+      {/* Auswahl: wie viele der letzten Spieltage anzeigen (nur Admin, gilt für alle) */}
+      <div className="flex items-center gap-2 mb-4 text-sm flex-wrap">
         <span className="text-gray-400">Letzte Spieltage:</span>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
-            onClick={() => setShowCount(n)}
-            disabled={n > maxCount}
+            onClick={() => changeCount(n)}
+            disabled={!isAdmin || n > maxCount || savingCount}
+            title={isAdmin ? `Letzte ${n} Spieltage anzeigen` : "Nur der Admin kann das ändern"}
             className={`w-8 h-8 rounded-lg font-semibold transition-colors ${
               showCount === n
                 ? "bg-[#00ff87] text-black"
-                : "glass-soft text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-            }`}
+                : "glass-soft text-gray-300"
+            } ${isAdmin ? "hover:text-white disabled:opacity-30 disabled:cursor-not-allowed" : "cursor-default"}`}
           >
             {n}
           </button>
         ))}
+        <span className="text-xs text-gray-500 ml-1">
+          {isAdmin ? "(legt die Anzeige für alle fest)" : "(vom Admin festgelegt)"}
+        </span>
       </div>
 
       {byPosition.map(({ pos, players }) => (

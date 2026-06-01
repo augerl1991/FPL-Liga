@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 
 const DEFAULTS: Record<string, string> = {
   plMode: "history", // "history" | "live"
+  kaderGwCount: "5", // Anzahl der letzten Spieltage in "Mein Kader" (1-5), global vom Admin gesetzt
 };
 
 export async function GET(req: NextRequest) {
