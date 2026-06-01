@@ -38,6 +38,7 @@ export default function AufstellungSeite() {
   const [error, setError]           = useState("");
   const [allDeadlines, setAllDl]    = useState<{ id: number; label: string; deadline: string }[]>([]);
   const [lockedTeams, setLockedTeams] = useState<Set<string>>(new Set());
+  const [gwPoints, setGwPoints]     = useState<Record<number, number>>({});
   const [activeId, setActiveId]     = useState<number | null>(null);
 
   useEffect(() => {
@@ -111,6 +112,17 @@ export default function AufstellungSeite() {
     }
   }, [selectedGW, gameweeks]);
 
+  // Live-GW-Punkte laden, sobald Spieler gespielt haben
+  useEffect(() => {
+    if (!lockedTeams.size) return;
+    const gwNum = gameweeks.find(g => g.id === selectedGW)?.number;
+    if (!gwNum) return;
+    fetch(`/api/gw-points?gw=${gwNum}`)
+      .then(r => r.json())
+      .then(d => d.points && setGwPoints(d.points))
+      .catch(() => {});
+  }, [lockedTeams, selectedGW, gameweeks]);
+
   /* ── Lookups ── */
   function getInfo(id: number): Player | undefined {
     return squad.find(q => q.fplPlayer.id === id)?.fplPlayer ?? extraPlayers[id];
@@ -119,6 +131,7 @@ export default function AufstellungSeite() {
 
   /* ── Derived ── */
   const selectedNumber = gameweeks.find(g => g.id === selectedGW)?.number ?? 0;
+  // (selectedNumber muss VOR dem useEffect für Live-Punkte stehen – daher hier im Derive-Block)
   const now = new Date();
   const hasOpenDeadline = allDeadlines.some(d => new Date(d.deadline) > now);
   const isEditable = currentGw != null && selectedGW === currentGw.id && hasOpenDeadline;
@@ -324,6 +337,11 @@ export default function AufstellungSeite() {
           <div className={`text-[11px] font-semibold leading-tight truncate ${isActive ? "text-black" : "text-white"}`}>
             {info.webName}
           </div>
+          {locked && gwPoints[slot.fplPlayerId] !== undefined && (
+            <div className={`text-[10px] font-black mt-0.5 ${isActive ? "text-[#00cc70]" : "text-[#00ff87]"}`}>
+              {gwPoints[slot.fplPlayerId]} Pkt
+            </div>
+          )}
         </div>
 
         {isActive && (
@@ -528,16 +546,28 @@ export default function AufstellungSeite() {
               {bank.map(s => {
                 const info = getInfo(s.fplPlayerId);
                 if (!info) return null;
+                const bankLocked = isLocked(s.fplPlayerId);
+                const bankPts = gwPoints[s.fplPlayerId];
                 return (
-                  <div key={s.fplPlayerId} className="flex items-center gap-1.5 bg-[#0f3460] rounded-lg px-2.5 py-1.5">
+                  <div
+                    key={s.fplPlayerId}
+                    onClick={() => isEditable && activeId && activeId !== s.fplPlayerId ? swapWithActive(s.fplPlayerId) : undefined}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 ${
+                      bankLocked ? "bg-orange-900/40 ring-1 ring-orange-500/30" : "bg-[#0f3460]"
+                    } ${isEditable && activeId && activeId !== s.fplPlayerId ? "cursor-pointer hover:ring-1 hover:ring-[#00ff87]/40" : ""}`}
+                  >
+                    {bankLocked && <span className="text-orange-400 text-[9px]">🔒</span>}
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${POS_COLORS[info.position]}`}>
                       {info.position}
                     </span>
                     <span className="text-xs font-medium">{info.webName}</span>
-                    {isEditable && <>
-                      <button onClick={() => moveToStarter(s.fplPlayerId)} title="In Startelf"
+                    {bankLocked && bankPts !== undefined && (
+                      <span className="text-[10px] font-black text-[#00ff87] ml-1">{bankPts}</span>
+                    )}
+                    {isEditable && !activeId && <>
+                      <button onClick={(e) => { e.stopPropagation(); moveToStarter(s.fplPlayerId); }} title="In Startelf"
                         className="text-[#00ff87] hover:text-green-300 text-xs ml-1">↑</button>
-                      <button onClick={() => removeFromSlots(s.fplPlayerId)} title="Entfernen"
+                      <button onClick={(e) => { e.stopPropagation(); removeFromSlots(s.fplPlayerId); }} title="Entfernen"
                         className="text-gray-600 hover:text-red-400 text-xs">✕</button>
                     </>}
                   </div>
@@ -547,6 +577,27 @@ export default function AufstellungSeite() {
           </div>
 
           {isEditable && <>
+            {/* Live-Punkte Startelf-Summe */}
+            {Object.keys(gwPoints).length > 0 && (() => {
+              const captain = starters.find(s => s.isCaptain);
+              const vice    = starters.find(s => s.isViceCaptain);
+              const captainPlayed = captain && isLocked(captain.fplPlayerId);
+              const effectiveCaptainId = captainPlayed
+                ? captain!.fplPlayerId
+                : (vice && isLocked(vice.fplPlayerId) ? vice!.fplPlayerId : null);
+              const total = starters.reduce((sum, s) => {
+                const pts = gwPoints[s.fplPlayerId] ?? 0;
+                return sum + (s.fplPlayerId === effectiveCaptainId ? pts * 2 : pts);
+              }, 0);
+              const played = starters.filter(s => isLocked(s.fplPlayerId)).length;
+              if (!played) return null;
+              return (
+                <div className="flex items-center justify-between glass rounded-xl px-4 py-2.5">
+                  <span className="text-xs text-gray-400">{played} Starter gespielt</span>
+                  <span className="text-sm font-black text-[#00ff87]">{total} Pkt</span>
+                </div>
+              );
+            })()}
             {error && <p className="text-red-400 text-sm bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             {saved && <p className="text-green-400 text-sm bg-green-900/20 rounded-lg px-3 py-2">✓ Aufstellung gespeichert!</p>}
             <button
@@ -583,10 +634,20 @@ export default function AufstellungSeite() {
                       const slot = slots.find(s => s.fplPlayerId === sp.fplPlayer.id);
                       const isStarter = slot && slot.position <= 11;
                       const isBank    = slot && slot.position > 11;
+                      const played    = isLocked(sp.fplPlayer.id);
+                      const pts       = gwPoints[sp.fplPlayer.id];
                       return (
                         <button
                           key={sp.fplPlayer.id}
-                          onClick={() => isStarter || isBank ? removeFromSlots(sp.fplPlayer.id) : addToSlots(sp.fplPlayer.id)}
+                          onClick={() => {
+                            if (activeId && activeId !== sp.fplPlayer.id && (isStarter || isBank)) {
+                              swapWithActive(sp.fplPlayer.id);
+                            } else if (isStarter || isBank) {
+                              removeFromSlots(sp.fplPlayer.id);
+                            } else {
+                              addToSlots(sp.fplPlayer.id);
+                            }
+                          }}
                           className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-left transition-colors text-xs ${
                             isStarter
                               ? "bg-[#00ff87]/15 border border-[#00ff87]/25 text-[#00ff87]"
@@ -595,9 +656,13 @@ export default function AufstellungSeite() {
                               : "bg-[#0f3460] hover:bg-[#163a6e] text-gray-300"
                           }`}
                         >
+                          {played && <span className="text-orange-400 text-[8px] shrink-0">🔒</span>}
                           <span className="flex-1 truncate font-medium">{sp.fplPlayer.webName}</span>
-                          {isStarter && <span className="text-[9px] font-bold shrink-0">START</span>}
-                          {isBank    && <span className="text-[9px] font-bold shrink-0">BANK</span>}
+                          {played && pts !== undefined && (
+                            <span className="text-[10px] font-black text-[#00ff87] shrink-0">{pts}</span>
+                          )}
+                          {isStarter && <span className="text-[9px] font-bold shrink-0 opacity-60">ST</span>}
+                          {isBank    && <span className="text-[9px] font-bold shrink-0 opacity-60">BK</span>}
                           {!slot     && <span className="text-[9px] text-gray-600 shrink-0">+</span>}
                         </button>
                       );
