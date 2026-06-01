@@ -197,7 +197,8 @@ export default function AufstellungSeite() {
 
   async function saveLineup() {
     if (!isEditable) return;
-    if (slots.length !== 18) { setError(`Genau 18 Spieler auswählen (aktuell ${slots.length})`); return; }
+    if (starters.length !== 11) { setError(`Genau 11 Starter benötigt (aktuell ${starters.length})`); return; }
+    if (bank.length > 7) { setError(`Maximal 7 Bankspieler (aktuell ${bank.length})`); return; }
     const res = await fetch("/api/lineup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -450,7 +451,7 @@ export default function AufstellungSeite() {
               onClick={saveLineup}
               className="w-full bg-[#00ff87] text-[#38003c] font-bold py-3 rounded-xl hover:bg-green-400 transition-colors text-sm"
             >
-              Aufstellung speichern ({slots.length}/18)
+              Aufstellung speichern ({starters.length}/11 Starter · {bank.length}/7 Bank)
             </button>
           </>}
 

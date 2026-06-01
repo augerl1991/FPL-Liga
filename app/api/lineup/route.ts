@@ -61,8 +61,15 @@ export async function POST(req: NextRequest) {
   const { gameweekId, slots } = await req.json();
   // slots: [{ fplPlayerId, position (1-18), isCaptain, isViceCaptain }]
 
-  if (!gameweekId || !Array.isArray(slots) || slots.length !== 18)
-    return NextResponse.json({ error: "18 Slots benötigt (11 Starter + 7 Bank)" }, { status: 400 });
+  if (!gameweekId || !Array.isArray(slots))
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
+
+  const starterCount = slots.filter((s) => s.position <= 11).length;
+  const benchCount = slots.filter((s) => s.position > 11).length;
+  if (starterCount !== 11)
+    return NextResponse.json({ error: "Genau 11 Starter benötigt" }, { status: 400 });
+  if (benchCount > 7)
+    return NextResponse.json({ error: "Maximal 7 Bankspieler erlaubt" }, { status: 400 });
 
   // Deadline prüfen
   const deadlineCheck = await prisma.gameweekDeadline.findFirst({
