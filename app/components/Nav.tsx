@@ -4,12 +4,12 @@ import { useAuth } from "@/app/providers";
 import { useRouter, usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/tabelle", label: "Tabelle" },
-  { href: "/spielplan", label: "Spielplan" },
-  { href: "/aufstellung", label: "Aufstellung" },
-  { href: "/kader", label: "Mein Kader" },
-  { href: "/alle-kader", label: "Alle Kader" },
-  { href: "/pl-spielplan", label: "Liga-Archiv" },
+  { href: "/tabelle",      label: "Tabelle",      adminOnly: false },
+  { href: "/spielplan",    label: "Spielplan",    adminOnly: false },
+  { href: "/aufstellung",  label: "Aufstellung",  hideForAdmin: true },
+  { href: "/kader",        label: "Mein Kader",   hideForAdmin: true },
+  { href: "/alle-kader",   label: "Alle Kader",   adminOnly: false },
+  { href: "/pl-spielplan", label: "Liga-Archiv",  adminOnly: false },
 ];
 
 export default function Nav() {
@@ -38,7 +38,7 @@ export default function Nav() {
         {user && (
           <>
             <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {LINKS.map((l) => (
+              {LINKS.filter((l) => !(l.hideForAdmin && user?.isAdmin)).map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
