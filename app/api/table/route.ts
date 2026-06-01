@@ -95,12 +95,12 @@ export async function GET(req: NextRequest) {
 
   const table = [...stats.values()].sort((a, b) => {
     if (b.pts !== a.pts) return b.pts - a.pts;
-    // Tordifferenz als 1. Tiebreaker
+    // 1. Tiebreaker: geschossene Tore
+    if (b.scored !== a.scored) return b.scored - a.scored;
+    // 2. Tiebreaker: Tordifferenz
     const gdB = b.scored - b.conceded;
     const gdA = a.scored - a.conceded;
-    if (gdB !== gdA) return gdB - gdA;
-    // FPL-Gesamtpunkte als 2. Tiebreaker
-    return b.fplPoints - a.fplPoints;
+    return gdB - gdA;
   });
 
   return NextResponse.json(table);

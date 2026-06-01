@@ -30,11 +30,12 @@ model Season {
 }
 
 model Team {
-  id        Int    @id @default(autoincrement())
-  name      String
-  userId    Int    @unique
-  sortOrder Int    @default(0)
-  user      User   @relation(fields: [userId], references: [id])
+  id                 Int    @id @default(autoincrement())
+  name               String
+  userId             Int    @unique
+  sortOrder          Int    @default(0)
+  nameChangedSeason  Int?   // seasonId when the name was last changed this season
+  user               User   @relation(fields: [userId], references: [id])
 
   squadPlayers  SquadPlayer[]
   homeMatches   Match[]       @relation("HomeTeam")
@@ -191,4 +192,9 @@ model AuctionResult {
   finalPrice  Int
 
   fplPlayer   FplPlayer @relation(fields: [fplPlayerId], references: [id])
+}
+
+model SiteConfig {
+  key   String @id
+  value String
 }

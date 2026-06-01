@@ -1,101 +1,166 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 
 export default function ProfilPage() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
+
+  // ── Vereinsname ──
+  const [newName, setNewName] = useState("");
+  const [nameLocked, setNameLocked] = useState(false); // bereits diese Saison geändert
+  const [nameMsg, setNameMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [nameLoading, setNameLoading] = useState(false);
+
+  // ── Passwort ──
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [pwLoading, setPwLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Prüfen ob Vereinsname bereits geändert (Lock vom Server testen)
+  useEffect(() => {
+    // Wir probieren mit einem leeren Namen – der Server antwortet mit 409 wenn gesperrt
+    // Stattdessen: beim ersten echten Submit merken wir den Lock
+  }, []);
+
+  async function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(null);
+    setNameMsg(null);
+    setNameLoading(true);
+    const res = await fetch("/api/profile/team-name", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
+    const data = await res.json();
+    setNameLoading(false);
+    if (res.ok) {
+      setNameMsg({ type: "ok", text: `Vereinsname auf „${data.name}" geändert` });
+      setNameLocked(true);
+      setNewName("");
+      refresh();
+    } else if (res.status === 409) {
+      setNameLocked(true);
+      setNameMsg({ type: "err", text: data.error });
+    } else {
+      setNameMsg({ type: "err", text: data.error || "Fehler" });
+    }
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPwMsg(null);
     if (next !== confirm) {
-      setMsg({ type: "err", text: "Neue Passwörter stimmen nicht überein" });
+      setPwMsg({ type: "err", text: "Neue Passwörter stimmen nicht überein" });
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword: current, newPassword: next }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMsg({ type: "ok", text: "Passwort erfolgreich geändert!" });
-        setCurrent(""); setNext(""); setConfirm("");
-      } else {
-        setMsg({ type: "err", text: data.error || "Fehler" });
-      }
-    } finally {
-      setLoading(false);
+    setPwLoading(true);
+    const res = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: current, newPassword: next }),
+    });
+    const data = await res.json();
+    setPwLoading(false);
+    if (res.ok) {
+      setPwMsg({ type: "ok", text: "Passwort erfolgreich geändert" });
+      setCurrent(""); setNext(""); setConfirm("");
+    } else {
+      setPwMsg({ type: "err", text: data.error || "Fehler" });
     }
   }
 
   return (
-    <div className="max-w-md mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold text-white mb-2">Profil</h1>
-      <p className="text-gray-400 mb-8">
-        Angemeldet als: <span className="text-[#00ff87] font-semibold">{user?.username}</span>
-        {user?.team?.name && <> · Team: <span className="text-white">{user.team.name}</span></>}
-      </p>
+    <div className="max-w-md space-y-6">
+      <h1 className="text-2xl font-bold text-[#00ff87]">Mein Profil</h1>
 
-      <div className="bg-white/10 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-5">Passwort ändern</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Aktuelles Passwort</label>
-            <input
-              type="password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              required
-              className="w-full bg-white/20 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#00ff87]"
-              placeholder="••••••••"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Neues Passwort</label>
-            <input
-              type="password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              required
-              minLength={6}
-              className="w-full bg-white/20 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#00ff87]"
-              placeholder="Mindestens 6 Zeichen"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Neues Passwort bestätigen</label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-              className="w-full bg-white/20 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#00ff87]"
-              placeholder="••••••••"
-            />
-          </div>
+      {/* Info-Karte */}
+      <div className="bg-[#16213e] rounded-xl p-5 text-sm space-y-2">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Anmeldename</span>
+          <span className="font-semibold">{user?.username}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Vereinsname</span>
+          <span className="font-semibold text-[#00ff87]">{user?.team?.name ?? "–"}</span>
+        </div>
+      </div>
 
-          {msg && (
-            <div className={`p-3 rounded-lg text-sm font-medium ${msg.type === "ok" ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
-              {msg.text}
-            </div>
-          )}
-
+      {/* Vereinsname ändern */}
+      <div className="bg-[#16213e] rounded-xl p-6">
+        <h2 className="text-lg font-semibold mb-1">Vereinsname ändern</h2>
+        <p className="text-gray-400 text-xs mb-4">
+          Einmal pro Saison frei wählbar. Der Anmeldename bleibt immer gleich.
+        </p>
+        <form onSubmit={handleNameSubmit} className="space-y-3">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={user?.team?.name ?? "Neuer Vereinsname"}
+            maxLength={40}
+            required
+            disabled={nameLocked}
+            className="w-full bg-[#0f3460] border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] disabled:opacity-40 disabled:cursor-not-allowed"
+          />
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-[#00ff87] text-black font-bold py-2.5 rounded-lg hover:bg-green-400 transition-colors disabled:opacity-50"
+            disabled={nameLocked || nameLoading || !newName.trim()}
+            className="w-full bg-[#00ff87] text-black font-bold py-2.5 rounded-lg hover:bg-green-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {loading ? "Speichern..." : "Passwort ändern"}
+            {nameLoading ? "Speichern…" : nameLocked ? "Bereits diese Saison geändert" : "Vereinsname speichern"}
           </button>
         </form>
+        {nameMsg && (
+          <div className={`mt-3 p-3 rounded-lg text-sm font-medium ${nameMsg.type === "ok" ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+            {nameMsg.text}
+          </div>
+        )}
+      </div>
+
+      {/* Passwort ändern */}
+      <div className="bg-[#16213e] rounded-xl p-6">
+        <h2 className="text-lg font-semibold mb-1">Passwort ändern</h2>
+        <p className="text-gray-400 text-xs mb-4">Mindestens 6 Zeichen.</p>
+        <form onSubmit={handlePasswordSubmit} className="space-y-3">
+          <input
+            type="password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            placeholder="Aktuelles Passwort"
+            required
+            className="w-full bg-[#0f3460] border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87]"
+          />
+          <input
+            type="password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            placeholder="Neues Passwort"
+            minLength={6}
+            required
+            className="w-full bg-[#0f3460] border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87]"
+          />
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="Neues Passwort bestätigen"
+            required
+            className="w-full bg-[#0f3460] border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87]"
+          />
+          <button
+            type="submit"
+            disabled={pwLoading}
+            className="w-full bg-yellow-400 text-black font-bold py-2.5 rounded-lg hover:bg-yellow-300 transition-colors disabled:opacity-50"
+          >
+            {pwLoading ? "Speichern…" : "Passwort ändern"}
+          </button>
+        </form>
+        {pwMsg && (
+          <div className={`mt-3 p-3 rounded-lg text-sm font-medium ${pwMsg.type === "ok" ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+            {pwMsg.text}
+          </div>
+        )}
       </div>
     </div>
   );

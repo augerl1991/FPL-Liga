@@ -20,7 +20,7 @@ export default function Nav() {
         <>
           <Link href="/tabelle" className="hover:text-[#00ff87] transition-colors">Tabelle</Link>
           <Link href="/spielplan" className="hover:text-[#00ff87] transition-colors">Spielplan</Link>
-          <Link href="/pl-spielplan" className="hover:text-[#00ff87] transition-colors">PL Fixtures</Link>
+          <Link href="/pl-spielplan" className="hover:text-[#00ff87] transition-colors">Letzte Saison</Link>
           <Link href="/kader" className="hover:text-[#00ff87] transition-colors">Mein Kader</Link>
           <Link href="/alle-kader" className="hover:text-[#00ff87] transition-colors">Alle Kader</Link>
           <Link href="/aufstellung" className="hover:text-[#00ff87] transition-colors">Aufstellung</Link>

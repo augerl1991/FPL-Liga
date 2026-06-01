@@ -33,17 +33,28 @@ export async function POST(req: NextRequest) {
   const gwMap = new Map(gameweeks.map((g) => [g.number, g.id]));
   const schedule = generateSchedule(teams.map((t) => t.id));
 
-  // Alte Matches löschen und neu erstellen
-  await prisma.match.deleteMany({ where: { seasonId } });
+  // Gespielte GW-IDs ermitteln – diese Spieltage NICHT anfassen
+  const playedMatches = await prisma.match.findMany({
+    where: { seasonId, played: true },
+    select: { gameweekId: true },
+  });
+  const playedGwIds = new Set(playedMatches.map((m) => m.gameweekId));
 
-  await prisma.match.createMany({
-    data: schedule.map((s) => ({
+  // Alle Matches aus nicht-gespielten GWs löschen (inkl. allfälliger Duplikate)
+  await prisma.match.deleteMany({
+    where: { seasonId, gameweekId: { notIn: [...playedGwIds] } },
+  });
+
+  const newMatches = schedule
+    .filter((s) => !playedGwIds.has(gwMap.get(s.gw)!))
+    .map((s) => ({
       seasonId,
       gameweekId: gwMap.get(s.gw)!,
       homeTeamId: s.home,
       awayTeamId: s.away,
-    })),
-  });
+    }));
 
-  return NextResponse.json({ ok: true, matches: schedule.length });
+  await prisma.match.createMany({ data: newMatches });
+
+  return NextResponse.json({ ok: true, matches: newMatches.length, skippedGws: playedGwIds.size });
 }

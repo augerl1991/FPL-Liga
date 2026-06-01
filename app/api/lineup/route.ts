@@ -20,7 +20,38 @@ export async function GET(req: NextRequest) {
     include: { slots: { include: { fplPlayer: true }, orderBy: { position: "asc" } } },
   });
 
-  return NextResponse.json(lineup);
+  if (lineup) return NextResponse.json(lineup);
+
+  // Noch keine Aufstellung für diesen Spieltag → die des letzten Spieltags
+  // als Vorlage übernehmen (carry-over), damit der Spieler nur noch anpassen muss.
+  const gw = await prisma.gameweek.findUnique({ where: { id: gameweekId } });
+  if (gw) {
+    const prevLineup = await prisma.lineup.findFirst({
+      where: {
+        teamId: user.team.id,
+        gameweek: { seasonId: gw.seasonId, number: { lt: gw.number } },
+      },
+      orderBy: { gameweek: { number: "desc" } },
+      include: { slots: { include: { fplPlayer: true }, orderBy: { position: "asc" } } },
+    });
+    if (prevLineup) {
+      return NextResponse.json({
+        ...prevLineup,
+        id: null,
+        gameweekId,
+        carriedOver: true,
+        slots: prevLineup.slots.map((s) => ({
+          fplPlayerId: s.fplPlayerId,
+          position: s.position,
+          isCaptain: s.isCaptain,
+          isViceCaptain: s.isViceCaptain,
+          fplPlayer: s.fplPlayer,
+        })),
+      });
+    }
+  }
+
+  return NextResponse.json(null);
 }
 
 export async function POST(req: NextRequest) {

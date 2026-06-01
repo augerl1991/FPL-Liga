@@ -41,6 +41,10 @@ export default function LoginPage() {
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="username"
+            spellCheck={false}
             className="bg-[#0f3460] border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#00ff87]"
             required
           />

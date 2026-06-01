@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
   if (!username || !password)
     return NextResponse.json({ error: "Fehlende Felder" }, { status: 400 });
 
-  const user = await prisma.user.findUnique({ where: { username } });
+  // Username case-/whitespace-unempfindlich (Mobile-Tastaturen schreiben oft groß)
+  const normalized = String(username).trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { username: normalized } });
   if (!user || !(await bcrypt.compare(password, user.passwordHash)))
     return NextResponse.json({ error: "Ungültige Anmeldedaten" }, { status: 401 });
 

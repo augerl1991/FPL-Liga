@@ -42,23 +42,21 @@ export default function SpielplanSeite() {
               {expanded === gw.id && (
                 <div className="border-t border-gray-700">
                   {gw.matches.map((m) => (
-                    <div key={m.id} className="flex items-center px-4 py-2 border-b border-gray-800 last:border-0">
-                      <Link
-                        href={`/lineup/${m.homeTeamId}/${gw.id}`}
-                        className="flex-1 text-right text-sm hover:text-[#00ff87] transition-colors"
-                      >
+                    <Link
+                      key={m.id}
+                      href={`/spiel/${m.id}`}
+                      className="flex items-center px-4 py-2 border-b border-gray-800 last:border-0 hover:bg-[#0f3460] transition-colors group"
+                    >
+                      <span className="flex-1 text-right text-sm group-hover:text-[#00ff87] transition-colors">
                         {m.homeTeam.name}
-                      </Link>
+                      </span>
                       <span className="mx-4 text-center min-w-[60px] font-bold text-[#00ff87]">
                         {m.played ? `${m.homePoints} : ${m.awayPoints}` : "vs"}
                       </span>
-                      <Link
-                        href={`/lineup/${m.awayTeamId}/${gw.id}`}
-                        className="flex-1 text-left text-sm hover:text-[#00ff87] transition-colors"
-                      >
+                      <span className="flex-1 text-left text-sm group-hover:text-[#00ff87] transition-colors">
                         {m.awayTeam.name}
-                      </Link>
-                    </div>
+                      </span>
+                    </Link>
                   ))}
                 </div>
               )}

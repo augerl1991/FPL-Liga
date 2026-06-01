@@ -23,13 +23,16 @@ export async function POST(req: NextRequest) {
     season = await prisma.season.create({ data: { name: seasonName.trim(), active: true } });
   }
 
-  // 3. Alle Kader leeren → Auktion startet bei 0
+  // 3. Vereinsname-Lock zurücksetzen → jeder kann seinen Vereinsnamen einmal neu wählen
+  await prisma.team.updateMany({ data: { nameChangedSeason: null } });
+
+  // 4. Alle Kader leeren → Auktion startet bei 0
   const deleted = await prisma.squadPlayer.deleteMany({});
 
-  // 4. AuctionResults leeren
+  // 5. AuctionResults leeren
   await prisma.auctionResult.deleteMany({});
 
-  // 5. FPL Spielerdaten frisch von der API holen
+  // 6. FPL Spielerdaten frisch von der API holen
   const bootstrap = await fetchBootstrap();
   const teamMap = new Map(bootstrap.teams.map((t) => [t.id, t.name]));
 

@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
+import { PREV_SEASON, PREV_SEASON_NAME } from "@/lib/prev-season-data";
 
 type Team = { id: number; name: string; sortOrder: number; user: { username: string } };
 type Owner = { teamId: number; teamName: string; boughtFor: number };
@@ -12,7 +13,7 @@ const POS_COLORS: Record<string, string> = { GK: "bg-yellow-600", DEF: "bg-blue-
 export default function AdminSeite() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "auction" | "teams" | "lineups" | "schedule" | "sync">("users");
+  const [tab, setTab] = useState<"users" | "auction" | "teams" | "lineups" | "schedule" | "sync" | "history">("users");
 
   // User-Erstellung
   const [newUsername, setNewUsername] = useState("");
@@ -40,6 +41,7 @@ export default function AdminSeite() {
 
   // Spielplan + Teamreihenfolge
   const [scheduleMsg, setScheduleMsg] = useState("");
+  const [historyScheduleMsg, setHistoryScheduleMsg] = useState("");
   const [teamOrder, setTeamOrder] = useState<Team[]>([]);
   const [orderMsg, setOrderMsg] = useState("");
 
@@ -56,6 +58,14 @@ export default function AdminSeite() {
   };
   const [lineupStatus, setLineupStatus] = useState<{ currentGwNumber: number | null; teams: LineupTeam[] } | null>(null);
   const [lineupHistoryTeam, setLineupHistoryTeam] = useState<number | null>(null);
+
+  // History-Tab
+  const [historyGW, setHistoryGW] = useState(1);
+  const historyGWRef = useRef<HTMLDivElement>(null);
+
+  // PL-Modus Toggle
+  const [plMode, setPlMode] = useState<"history" | "live">("history");
+  const [plModeMsg, setPlModeMsg] = useState("");
 
   // Neue Saison
   const [newSeasonName, setNewSeasonName] = useState("");
@@ -91,6 +101,11 @@ export default function AdminSeite() {
     }
     if (tab === "schedule") {
       fetch("/api/admin/team-order").then((r) => r.json()).then((d) => Array.isArray(d) && setTeamOrder(d));
+    }
+    if (tab === "sync") {
+      fetch("/api/admin/config?key=plMode")
+        .then((r) => r.json())
+        .then((d) => setPlMode(d.value === "live" ? "live" : "history"));
     }
   }, [tab, loadPlayers]);
 
@@ -185,6 +200,22 @@ export default function AdminSeite() {
     setScheduleMsg(res.ok ? `✓ ${d.matches} Spiele generiert` : `✗ ${d.error}`);
   }
 
+  async function generateScheduleFromHistory() {
+    setHistoryScheduleMsg("Lädt…");
+    const res = await fetch("/api/admin/generate-schedule-from-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seasonId: 1 }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      const warn = d.warnings?.length ? ` · ⚠ ${d.warnings.join(", ")}` : "";
+      setHistoryScheduleMsg(`✓ ${d.matchesCreated} Spiele aus Vorjahr übernommen · ${d.playedGwsSkipped} gespielte GWs übersprungen${warn}`);
+    } else {
+      setHistoryScheduleMsg(`✗ ${d.error}`);
+    }
+  }
+
   async function syncPlayers() {
     setSyncMsg("Lädt...");
     const res = await fetch("/api/fpl/sync", { method: "POST" });
@@ -226,6 +257,23 @@ export default function AdminSeite() {
     setSyncMsg(res.ok ? `✓ GW ${gwNum} synchronisiert` : `✗ ${d.error}`);
   }
 
+  async function togglePlMode() {
+    const newMode = plMode === "history" ? "live" : "history";
+    const res = await fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "plMode", value: newMode }),
+    });
+    if (res.ok) {
+      setPlMode(newMode);
+      setPlModeMsg(newMode === "live"
+        ? "✓ Spielplan zeigt jetzt Live-PL-Daten · History unter diesem Tab verfügbar"
+        : "✓ Spielplan zeigt jetzt Saison-2024/25-Daten");
+    } else {
+      setPlModeMsg("✗ Fehler beim Speichern");
+    }
+  }
+
   // Gefilterte + sortierte Spielerliste
   const filtered = players.filter((p) => {
     if (posFilter !== "ALL" && p.position !== posFilter) return false;
@@ -243,6 +291,7 @@ export default function AdminSeite() {
     { key: "lineups", label: "Aufstellungen" },
     { key: "schedule", label: "Spielplan" },
     { key: "sync", label: "FPL Sync" },
+    { key: "history", label: "📁 History" },
   ] as const;
 
   return (
@@ -663,14 +712,34 @@ export default function AdminSeite() {
             )}
           </div>
           <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
-            <h2 className="font-semibold mb-1">Schritt 2: Spielplan generieren</h2>
+            <h2 className="font-semibold mb-1">Schritt 2a: Spielplan aus Vorjahr übernehmen</h2>
             <p className="text-gray-400 text-sm mb-4">
-              Erstellt 38 Spieltage basierend auf der gespeicherten Reihenfolge. Alle 10 Teams müssen angelegt sein.
+              Übernimmt die exakten Paarungen (GW1–38) aus Saison 2024/25 und mappt sie 1:1 auf die aktuellen Teams nach sortOrder.
+              Bereits gespielte Spieltage werden nicht überschrieben.
+            </p>
+            <button onClick={generateScheduleFromHistory} className="bg-[#00ff87] text-black font-bold px-6 py-2 rounded hover:bg-green-400">
+              Spielplan aus Vorjahr laden
+            </button>
+            {historyScheduleMsg && (
+              <p className={`mt-3 text-sm ${historyScheduleMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>
+                {historyScheduleMsg}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
+            <h2 className="font-semibold mb-1">Schritt 2b: Spielplan neu generieren (Berger)</h2>
+            <p className="text-gray-400 text-sm mb-4">
+              Erstellt 38 Spieltage neu nach dem Berger-Algorithmus. Überschreibt alle Spiele (inkl. gespielte!).
             </p>
             <button onClick={generateSchedule} className="bg-yellow-400 text-black font-bold px-6 py-2 rounded hover:bg-yellow-300">
               Spielplan generieren
             </button>
-            {scheduleMsg && <p className="mt-3 text-sm text-green-400">{scheduleMsg}</p>}
+            {scheduleMsg && (
+              <p className={`mt-3 text-sm ${scheduleMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>
+                {scheduleMsg}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -736,8 +805,106 @@ export default function AdminSeite() {
           </div>
 
           {syncMsg && <p className="text-sm text-green-400">{syncMsg}</p>}
+
+          {/* PL-Spielplan Modus */}
+          <div className="bg-[#16213e] rounded-xl p-6">
+            <h2 className="font-semibold mb-1">PL-Spielplan Modus</h2>
+            <p className="text-gray-400 text-sm mb-4">
+              Steuert was unter <span className="text-white">„Letzte Saison"</span> im Menü angezeigt wird.
+              Wenn die neue PL-Saison startet: auf Live umschalten.
+              Der historische Spielplan bleibt im <button onClick={() => setTab("history")} className="text-[#00ff87] underline">History-Tab</button> erhalten.
+            </p>
+            <div className="flex items-center gap-4">
+              <div className={`px-3 py-1 rounded text-xs font-bold ${plMode === "history" ? "bg-[#00ff87] text-black" : "bg-gray-700 text-gray-400"}`}>
+                📁 History ({PREV_SEASON_NAME})
+              </div>
+              <button
+                onClick={togglePlMode}
+                className="px-4 py-2 bg-[#0f3460] hover:bg-[#163a6e] rounded-lg text-sm font-medium transition-colors border border-gray-600"
+              >
+                {plMode === "history" ? "→ Auf Live umschalten" : "→ Auf History umschalten"}
+              </button>
+              <div className={`px-3 py-1 rounded text-xs font-bold ${plMode === "live" ? "bg-[#00ff87] text-black" : "bg-gray-700 text-gray-400"}`}>
+                🔴 Live (PL API)
+              </div>
+            </div>
+            {plModeMsg && <p className="mt-3 text-sm text-green-400">{plModeMsg}</p>}
+          </div>
         </div>
       )}
+      {/* ── History ── */}
+      {tab === "history" && (() => {
+        const gwData = PREV_SEASON.find((g) => g.gw === historyGW);
+        return (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-[#00ff87]">Liga-Spielplan {PREV_SEASON_NAME}</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Archiv – wird hier immer angezeigt, unabhängig vom PL-Spielplan-Modus</p>
+            </div>
+
+            <div className="overflow-x-auto pb-2 mb-6">
+              <div className="flex gap-1.5 w-max">
+                {PREV_SEASON.map(({ gw }) => {
+                  const gwMatches = PREV_SEASON.find((g) => g.gw === gw)?.matches ?? [];
+                  const allDone = gwMatches.every((m) => m.hs !== null && m.as !== null);
+                  const isCurrent = gw === historyGW;
+                  return (
+                    <div key={gw} ref={isCurrent ? historyGWRef : null}>
+                      <button
+                        onClick={() => setHistoryGW(gw)}
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
+                          isCurrent ? "bg-[#00ff87] text-black"
+                            : allDone ? "bg-[#16213e] text-gray-400"
+                            : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                        }`}
+                      >
+                        GW {gw}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {gwData && (
+              <div className="bg-[#16213e] rounded-xl overflow-hidden max-w-xl">
+                <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+                  <span className="font-semibold text-white">Spieltag {historyGW}</span>
+                  <span className="text-xs text-gray-400">
+                    {gwData.matches.filter((m) => m.hs !== null && m.as !== null).length} / {gwData.matches.length} gespielt
+                  </span>
+                </div>
+                <div>
+                  {gwData.matches.map((m, i) => {
+                    const finished = m.hs !== null && m.as !== null;
+                    const homeWin = finished && m.hs! > m.as!;
+                    const awayWin = finished && m.as! > m.hs!;
+                    return (
+                      <div key={i} className="flex items-center px-4 py-3 border-b border-gray-800 last:border-0">
+                        <div className="flex-1 text-right">
+                          <span className={`text-sm font-semibold ${homeWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
+                            {m.home}
+                          </span>
+                        </div>
+                        <div className="mx-4 min-w-[64px] text-center">
+                          {finished
+                            ? <span className="text-lg font-bold text-[#00ff87]">{m.hs} : {m.as}</span>
+                            : <span className="text-xs text-gray-500">vs</span>}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <span className={`text-sm font-semibold ${awayWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
+                            {m.away}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
