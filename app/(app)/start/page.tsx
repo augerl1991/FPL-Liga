@@ -1,4 +1,5 @@
 "use client";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/providers";
 
@@ -8,6 +9,60 @@ type Tile = {
   desc: string;
   emoji: string;
 };
+
+const ADMIN_SECTIONS = [
+  { tab: "users", label: "Nutzer anlegen", emoji: "➕" },
+  { tab: "auction", label: "Auktion", emoji: "💰" },
+  { tab: "teams", label: "Teams", emoji: "👔" },
+  { tab: "lineups", label: "Aufstellungen", emoji: "📋" },
+  { tab: "schedule", label: "Spielplan", emoji: "🗓️" },
+  { tab: "sync", label: "FPL Sync", emoji: "🔄" },
+  { tab: "history", label: "History", emoji: "📁" },
+];
+
+function AdminMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-yellow-400/80 hover:text-yellow-300 glass-soft rounded-full px-3 py-1.5 transition-colors"
+      >
+        <span>🛠️</span> Admin <span className={`transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-52 glass rounded-xl p-1.5 z-50 shadow-2xl">
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-yellow-300 hover:bg-white/10 transition-colors font-semibold"
+          >
+            <span>🛠️</span> Admin-Übersicht
+          </Link>
+          <div className="my-1 border-t border-white/10" />
+          {ADMIN_SECTIONS.map((s) => (
+            <Link
+              key={s.tab}
+              href={`/admin?tab=${s.tab}`}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <span>{s.emoji}</span> {s.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const SPIELBETRIEB: Tile[] = [
   { href: "/spielplan", title: "Spielplan", desc: "Begegnungen & Ergebnisse", emoji: "📅" },
@@ -39,11 +94,7 @@ export default function StartPage() {
         <Link href="/profil" className="flex items-center gap-1.5 text-gray-400 hover:text-white glass-soft rounded-full px-3 py-1.5 transition-colors">
           <span>⚙️</span> Profil
         </Link>
-        {user?.isAdmin && (
-          <Link href="/admin" className="flex items-center gap-1.5 text-yellow-400/80 hover:text-yellow-300 glass-soft rounded-full px-3 py-1.5 transition-colors">
-            <span>🛠️</span> Admin
-          </Link>
-        )}
+        {user?.isAdmin && <AdminMenu />}
       </div>
 
       {/* Logo-Platzhalter, zentriert */}

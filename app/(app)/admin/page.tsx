@@ -15,6 +15,13 @@ export default function AdminSeite() {
   const router = useRouter();
   const [tab, setTab] = useState<"users" | "auction" | "teams" | "lineups" | "schedule" | "sync" | "history">("users");
 
+  // Deep-Link: ?tab=… öffnet direkt den gewünschten Admin-Bereich
+  useEffect(() => {
+    const valid = ["users", "auction", "teams", "lineups", "schedule", "sync", "history"] as const;
+    const q = new URLSearchParams(window.location.search).get("tab");
+    if (q && (valid as readonly string[]).includes(q)) setTab(q as typeof valid[number]);
+  }, []);
+
   // User-Erstellung
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
