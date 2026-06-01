@@ -272,7 +272,7 @@ export default function AufstellungSeite() {
           className={`w-full flex items-center justify-between rounded-xl px-4 py-3 border transition-colors ${
             isEditable
               ? "bg-[#00ff87]/15 border-[#00ff87]/40"
-              : "bg-[#16213e] border-gray-700 hover:border-[#00ff87]/40"
+              : "glass border-gray-700 hover:border-[#00ff87]/40"
           }`}
         >
           <div className="text-left">
@@ -286,7 +286,7 @@ export default function AufstellungSeite() {
       )}
 
       {/* Reiter: alle Spieltage */}
-      <div className="bg-[#16213e] rounded-xl p-2">
+      <div className="glass rounded-xl p-2">
         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold px-1 mb-1.5">Alle Spieltage (Ansicht)</p>
         <div className="flex flex-wrap gap-1.5">
           {gameweeks.map(gw => {
@@ -345,7 +345,7 @@ export default function AufstellungSeite() {
               className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                 formation === f
                   ? "bg-[#00ff87] text-black shadow shadow-[#00ff87]/30"
-                  : "bg-[#16213e] text-gray-400 hover:text-white hover:bg-[#1e3a6e]"
+                  : "glass text-gray-400 hover:text-white hover:bg-[#1e3a6e]"
               }`}
             >
               {f}
@@ -416,7 +416,7 @@ export default function AufstellungSeite() {
           </div>
 
           {/* Bank */}
-          <div className="bg-[#16213e] rounded-xl p-3">
+          <div className="glass rounded-xl p-3">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">
               Bank <span className="text-gray-600 font-normal">({bank.length}/7)</span>
             </p>
@@ -455,7 +455,7 @@ export default function AufstellungSeite() {
           </>}
 
           {!isEditable && (
-            <p className="text-xs text-gray-500 bg-[#16213e] rounded-lg px-3 py-2">
+            <p className="text-xs text-gray-500 glass rounded-lg px-3 py-2">
               Dieser Spieltag kann nicht mehr verändert werden. Nur der aktuelle Spieltag ist bearbeitbar.
             </p>
           )}
@@ -463,7 +463,7 @@ export default function AufstellungSeite() {
 
         {/* ── RIGHT: Squad list – nur im Bearbeitungsmodus ── */}
         {isEditable && (
-          <div className="bg-[#16213e] rounded-xl p-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <div className="glass rounded-xl p-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Kader</p>
             {POS_ORDER.map(pos => {
               const players = squad.filter(sp => sp.fplPlayer.position === pos);

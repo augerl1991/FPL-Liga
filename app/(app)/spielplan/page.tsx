@@ -29,7 +29,7 @@ export default function SpielplanSeite() {
         {gameweeks.map((gw) => {
           const allPlayed = gw.matches.every((m) => m.played);
           return (
-            <div key={gw.id} className="bg-[#16213e] rounded-xl overflow-hidden">
+            <div key={gw.id} className="glass rounded-xl overflow-hidden">
               <button
                 onClick={() => setExpanded(expanded === gw.id ? null : gw.id)}
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#0f3460] transition-colors"

@@ -54,7 +54,7 @@ export default function AlleKaderSeite() {
             <button
               onClick={() => setIdx((i) => Math.max(0, i - 1))}
               disabled={idx === 0}
-              className="px-3 py-2 bg-[#16213e] rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-xl leading-none"
+              className="px-3 py-2 glass rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-xl leading-none"
             >
               ‹
             </button>
@@ -67,7 +67,7 @@ export default function AlleKaderSeite() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     i === idx
                       ? "bg-[#00ff87] text-black"
-                      : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                      : "glass hover:bg-[#0f3460] text-white"
                   }`}
                 >
                   {t.name}
@@ -78,7 +78,7 @@ export default function AlleKaderSeite() {
             <button
               onClick={() => setIdx((i) => Math.min(teams.length - 1, i + 1))}
               disabled={idx === teams.length - 1}
-              className="px-3 py-2 bg-[#16213e] rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-xl leading-none"
+              className="px-3 py-2 glass rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-xl leading-none"
             >
               ›
             </button>
@@ -105,7 +105,7 @@ export default function AlleKaderSeite() {
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {COLS.map(({ pos, label, max, border, badge }) => (
-                <div key={pos} className={`bg-[#16213e] rounded-xl border-t-2 ${border} overflow-hidden`}>
+                <div key={pos} className={`glass rounded-xl border-t-2 ${border} overflow-hidden`}>
                   {/* Spalten-Header */}
                   <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${badge}`}>{pos}</span>

@@ -20,7 +20,7 @@ export default function LoginPage() {
     });
     if (res.ok) {
       refresh();
-      router.push("/tabelle");
+      router.push("/start");
     } else {
       const data = await res.json();
       setError(data.error || "Fehler beim Login");
@@ -28,11 +28,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
-      <div className="bg-[#16213e] p-8 rounded-xl shadow-xl w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="text-4xl mb-2">⚽</div>
-          <h1 className="text-2xl font-bold text-[#00ff87]">FPL Liga</h1>
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="glass p-8 rounded-2xl w-full max-w-sm">
+        <div className="text-center mb-7">
+          <div className="relative inline-block mb-3">
+            <div className="absolute inset-0 rounded-2xl bg-[#00ff87]/20 blur-xl" />
+            <div className="relative w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#38003c] to-[#1a0a2e] grid place-items-center ring-2 ring-[#00ff87]/40">
+              <span className="text-[#00ff87] font-black text-xl accent-glow">FPL</span>
+            </div>
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">FPL Liga</h1>
           <p className="text-gray-400 text-sm mt-1">Private Fantasy Liga</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -57,10 +62,7 @@ export default function LoginPage() {
             required
           />
           {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button
-            type="submit"
-            className="bg-[#00ff87] text-[#38003c] font-bold py-3 rounded-lg hover:bg-[#00e07a] transition-colors"
-          >
+          <button type="submit" className="btn-primary py-3">
             Einloggen
           </button>
         </form>

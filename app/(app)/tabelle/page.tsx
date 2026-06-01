@@ -22,7 +22,7 @@ export default function TabelleSeite() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-[#00ff87] mb-6">Liga-Tabelle</h1>
-      <div className="bg-[#16213e] rounded-xl overflow-hidden shadow-lg overflow-x-auto">
+      <div className="glass rounded-xl overflow-hidden shadow-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-[#38003c] text-[#00ff87] text-left">

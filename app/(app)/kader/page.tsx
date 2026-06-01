@@ -55,7 +55,7 @@ export default function KaderSeite() {
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">
             {POS_LABELS[pos]} ({players.length}/{({ GK: 3, DEF: 8, MID: 8, FWD: 6 })[pos]})
           </h2>
-          <div className="bg-[#16213e] rounded-xl overflow-hidden">
+          <div className="glass rounded-xl overflow-hidden">
             {players.length === 0 ? (
               <p className="px-4 py-3 text-gray-500 text-sm">Noch keine Spieler</p>
             ) : (

@@ -303,7 +303,7 @@ export default function AdminSeite() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? "bg-yellow-400 text-black" : "bg-[#16213e] hover:bg-[#0f3460]"}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? "bg-yellow-400 text-black" : "glass hover:bg-[#0f3460]"}`}
           >
             {t.label}
           </button>
@@ -312,7 +312,7 @@ export default function AdminSeite() {
 
       {/* ── Nutzer anlegen ── */}
       {tab === "users" && (
-        <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
+        <div className="glass rounded-xl p-6 max-w-md">
           <h2 className="font-semibold mb-4">Neuen Nutzer anlegen</h2>
           <form onSubmit={createUser} className="space-y-3">
             <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="Username" required className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white" />
@@ -339,7 +339,7 @@ export default function AdminSeite() {
               <button
                 key={pos}
                 onClick={() => setPosFilter(pos)}
-                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${posFilter === pos ? "bg-[#00ff87] text-black" : "bg-[#16213e] hover:bg-[#0f3460]"}`}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${posFilter === pos ? "bg-[#00ff87] text-black" : "glass hover:bg-[#0f3460]"}`}
               >
                 {pos}
               </button>
@@ -354,7 +354,7 @@ export default function AdminSeite() {
           </div>
 
           {/* Spielerliste */}
-          <div className="bg-[#16213e] rounded-xl overflow-hidden">
+          <div className="glass rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-400 uppercase border-b border-gray-700">
@@ -469,7 +469,7 @@ export default function AdminSeite() {
                 <button
                   onClick={() => setTeamIdx((i) => Math.max(0, i - 1))}
                   disabled={teamIdx === 0}
-                  className="px-3 py-2 bg-[#16213e] rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-lg"
+                  className="px-3 py-2 glass rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-lg"
                 >
                   ‹
                 </button>
@@ -482,7 +482,7 @@ export default function AdminSeite() {
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                         i === teamIdx
                           ? "bg-[#00ff87] text-black"
-                          : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                          : "glass hover:bg-[#0f3460] text-white"
                       }`}
                     >
                       {t.name}
@@ -493,7 +493,7 @@ export default function AdminSeite() {
                 <button
                   onClick={() => setTeamIdx((i) => Math.min(allTeams.length - 1, i + 1))}
                   disabled={teamIdx === allTeams.length - 1}
-                  className="px-3 py-2 bg-[#16213e] rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-lg"
+                  className="px-3 py-2 glass rounded-lg hover:bg-[#0f3460] disabled:opacity-30 transition-colors text-lg"
                 >
                   ›
                 </button>
@@ -528,7 +528,7 @@ export default function AdminSeite() {
 
                     <div className="grid grid-cols-4 gap-4">
                       {cols.map(({ pos, label, max, color }) => (
-                        <div key={pos} className={`bg-[#16213e] rounded-xl border-t-2 ${color} overflow-hidden`}>
+                        <div key={pos} className={`glass rounded-xl border-t-2 ${color} overflow-hidden`}>
                           <div className="px-3 py-2 flex items-center justify-between border-b border-gray-700">
                             <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
                             <span className="text-xs text-gray-400">{byPos[pos].length}/{max}</span>
@@ -566,7 +566,7 @@ export default function AdminSeite() {
             <p className="text-gray-400 text-sm">Lädt…</p>
           ) : (
             <>
-              <div className="bg-[#16213e] rounded-xl overflow-hidden mb-6">
+              <div className="glass rounded-xl overflow-hidden mb-6">
                 <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
                   <h2 className="font-semibold">
                     Spieltag {lineupStatus.currentGwNumber ?? "–"} – Abgaben
@@ -661,7 +661,7 @@ export default function AdminSeite() {
       {/* ── Spielplan ── */}
       {tab === "schedule" && (
         <div className="space-y-6">
-          <div className="bg-[#16213e] rounded-xl p-6">
+          <div className="glass rounded-xl p-6">
             <h2 className="font-semibold mb-1">Schritt 1: Auktionsnummern vergeben (1–10)</h2>
             <p className="text-gray-400 text-sm mb-4">
               Die Nummer bestimmt den Spielplan. <span className="text-white">Spieltag 1:</span> Nr.1 vs Nr.10 · Nr.2 vs Nr.9 · Nr.3 vs Nr.8 · Nr.4 vs Nr.7 · Nr.5 vs Nr.6
@@ -711,7 +711,7 @@ export default function AdminSeite() {
               </div>
             )}
           </div>
-          <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
+          <div className="glass rounded-xl p-6 max-w-md">
             <h2 className="font-semibold mb-1">Schritt 2a: Spielplan aus Vorjahr übernehmen</h2>
             <p className="text-gray-400 text-sm mb-4">
               Übernimmt die exakten Paarungen (GW1–38) aus Saison 2024/25 und mappt sie 1:1 auf die aktuellen Teams nach sortOrder.
@@ -727,7 +727,7 @@ export default function AdminSeite() {
             )}
           </div>
 
-          <div className="bg-[#16213e] rounded-xl p-6 max-w-md">
+          <div className="glass rounded-xl p-6 max-w-md">
             <h2 className="font-semibold mb-1">Schritt 2b: Spielplan neu generieren (Berger)</h2>
             <p className="text-gray-400 text-sm mb-4">
               Erstellt 38 Spieltage neu nach dem Berger-Algorithmus. Überschreibt alle Spiele (inkl. gespielte!).
@@ -787,7 +787,7 @@ export default function AdminSeite() {
           </div>
 
           {/* FPL Spieler-Sync */}
-          <div className="bg-[#16213e] rounded-xl p-6">
+          <div className="glass rounded-xl p-6">
             <h2 className="font-semibold mb-2">FPL Spielerdaten synchronisieren</h2>
             <p className="text-gray-400 text-sm mb-4">Aktualisiert Spielernamen, Vereine und Punkte (ohne Kader zu leeren)</p>
             <button onClick={syncPlayers} className="bg-yellow-400 text-black font-bold px-6 py-2 rounded hover:bg-yellow-300">
@@ -796,7 +796,7 @@ export default function AdminSeite() {
           </div>
 
           {/* Spieltag-Punkte */}
-          <div className="bg-[#16213e] rounded-xl p-6">
+          <div className="glass rounded-xl p-6">
             <h2 className="font-semibold mb-2">Spieltag-Punkte eintragen</h2>
             <div className="flex gap-2">
               <input value={gwNum} onChange={(e) => setGwNum(e.target.value)} type="number" min="1" max="38" placeholder="GW-Nummer" className="flex-1 bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white" />
@@ -807,7 +807,7 @@ export default function AdminSeite() {
           {syncMsg && <p className="text-sm text-green-400">{syncMsg}</p>}
 
           {/* PL-Spielplan Modus */}
-          <div className="bg-[#16213e] rounded-xl p-6">
+          <div className="glass rounded-xl p-6">
             <h2 className="font-semibold mb-1">PL-Spielplan Modus</h2>
             <p className="text-gray-400 text-sm mb-4">
               Steuert was unter <span className="text-white">&bdquo;Letzte Saison&ldquo;</span> im Menü angezeigt wird.
@@ -854,8 +854,8 @@ export default function AdminSeite() {
                         onClick={() => setHistoryGW(gw)}
                         className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
                           isCurrent ? "bg-[#00ff87] text-black"
-                            : allDone ? "bg-[#16213e] text-gray-400"
-                            : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                            : allDone ? "glass text-gray-400"
+                            : "glass hover:bg-[#0f3460] text-white"
                         }`}
                       >
                         GW {gw}
@@ -867,7 +867,7 @@ export default function AdminSeite() {
             </div>
 
             {gwData && (
-              <div className="bg-[#16213e] rounded-xl overflow-hidden max-w-xl">
+              <div className="glass rounded-xl overflow-hidden max-w-xl">
                 <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
                   <span className="font-semibold text-white">Spieltag {historyGW}</span>
                   <span className="text-xs text-gray-400">

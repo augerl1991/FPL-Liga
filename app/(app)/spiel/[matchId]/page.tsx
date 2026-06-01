@@ -85,7 +85,7 @@ export default function MatchH2HPage() {
         <p className="text-sm text-gray-400">Spieltag {match.gameweekNumber}</p>
       </div>
 
-      <div className="bg-[#16213e] rounded-xl p-4 flex items-center justify-between gap-3">
+      <div className="glass rounded-xl p-4 flex items-center justify-between gap-3">
         <div className="flex-1 text-right">
           <p className="font-bold text-white truncate">{match.home.name}</p>
           {hasPoints && <p className="text-[11px] text-gray-400">{homePts} Pkt</p>}
@@ -119,7 +119,7 @@ function TeamHalf({ team, accent }: { team: TeamView | null; accent: string }) {
   if (!team) return null;
   if (!team.lineup) {
     return (
-      <div className="bg-[#16213e] rounded-xl p-6 text-center">
+      <div className="glass rounded-xl p-6 text-center">
         <p className="font-bold text-white mb-2">{team.teamName}</p>
         <p className="text-gray-500 text-sm">Keine Aufstellung vorhanden.</p>
       </div>
@@ -179,7 +179,7 @@ function TeamHalf({ team, accent }: { team: TeamView | null; accent: string }) {
       </div>
 
       {/* Bank */}
-      <div className="bg-[#16213e] rounded-xl p-2.5">
+      <div className="glass rounded-xl p-2.5">
         <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5 font-semibold">Bank</p>
         <div className="flex flex-wrap gap-1.5">
           {bank.length === 0 && <p className="text-[11px] text-gray-700">–</p>}

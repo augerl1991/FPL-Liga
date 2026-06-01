@@ -103,7 +103,7 @@ export default function ProfilPage() {
         <div className="space-y-4">
           <Link
             href="/pl-spielplan"
-            className="group block bg-[#16213e] rounded-xl p-5 ring-1 ring-black/30 hover:ring-[#00ff87]/40 transition-all"
+            className="group block glass rounded-xl p-5 ring-1 ring-black/30 hover:ring-[#00ff87]/40 transition-all"
           >
             <div className="flex items-center gap-3">
               <span className="text-3xl">📊</span>
@@ -119,7 +119,7 @@ export default function ProfilPage() {
       ) : (
         <>
       {/* Info-Karte */}
-      <div className="bg-[#16213e] rounded-xl p-5 text-sm space-y-2">
+      <div className="glass rounded-xl p-5 text-sm space-y-2">
         <div className="flex justify-between">
           <span className="text-gray-400">Anmeldename</span>
           <span className="font-semibold">{user?.username}</span>
@@ -131,7 +131,7 @@ export default function ProfilPage() {
       </div>
 
       {/* Vereinsname ändern */}
-      <div className="bg-[#16213e] rounded-xl p-6">
+      <div className="glass rounded-xl p-6">
         <h2 className="text-lg font-semibold mb-1">Vereinsname ändern</h2>
         <p className="text-gray-400 text-xs mb-4">
           Einmal pro Saison frei wählbar. Der Anmeldename bleibt immer gleich.
@@ -162,7 +162,7 @@ export default function ProfilPage() {
       </div>
 
       {/* Passwort ändern */}
-      <div className="bg-[#16213e] rounded-xl p-6">
+      <div className="glass rounded-xl p-6">
         <h2 className="text-lg font-semibold mb-1">Passwort ändern</h2>
         <p className="text-gray-400 text-xs mb-4">Mindestens 6 Zeichen.</p>
         <form onSubmit={handlePasswordSubmit} className="space-y-3">

@@ -99,7 +99,7 @@ export default function LineupViewPage() {
       {loading && <p className="text-gray-400 text-center py-12">Lädt…</p>}
 
       {!loading && noLineup && (
-        <div className="bg-[#16213e] rounded-xl p-8 text-center">
+        <div className="glass rounded-xl p-8 text-center">
           <p className="text-gray-400">Keine Aufstellung eingereicht – auch keine vorherige vorhanden.</p>
         </div>
       )}
@@ -116,7 +116,7 @@ export default function LineupViewPage() {
       {!loading && !noLineup && (
         <>
           {/* Starter */}
-          <div className="bg-[#16213e] rounded-xl overflow-hidden mb-3">
+          <div className="glass rounded-xl overflow-hidden mb-3">
             <div className="px-4 py-2 border-b border-gray-700 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Startelf</span>
               <span className="text-xs text-gray-500">{starters.length} Spieler</span>
@@ -127,7 +127,7 @@ export default function LineupViewPage() {
           </div>
 
           {/* Bank */}
-          <div className="bg-[#16213e] rounded-xl overflow-hidden opacity-70">
+          <div className="glass rounded-xl overflow-hidden opacity-70">
             <div className="px-4 py-2 border-b border-gray-700 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Bank</span>
               <span className="text-xs text-gray-500">{bench.length} Spieler</span>

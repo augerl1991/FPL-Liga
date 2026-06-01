@@ -94,8 +94,8 @@ export default function PLSpielplanSeite() {
                     onClick={() => setHistoryGW(gw)}
                     className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
                       isCurrent ? "bg-[#00ff87] text-black"
-                        : allDone ? "bg-[#16213e] text-gray-400"
-                        : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                        : allDone ? "glass text-gray-400"
+                        : "glass hover:bg-[#0f3460] text-white"
                     }`}
                   >
                     GW {gw}
@@ -107,7 +107,7 @@ export default function PLSpielplanSeite() {
         </div>
 
         {gwData && (
-          <div className="bg-[#16213e] rounded-xl overflow-hidden">
+          <div className="glass rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
               <span className="font-semibold text-white">Spieltag {historyGW}</span>
               <span className="text-xs text-gray-400">
@@ -176,8 +176,8 @@ export default function PLSpielplanSeite() {
                       onClick={() => setSelectedGW(gw)}
                       className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
                         isCurrent ? "bg-[#00ff87] text-black"
-                          : allDone ? "bg-[#16213e] text-gray-400"
-                          : "bg-[#16213e] hover:bg-[#0f3460] text-white"
+                          : allDone ? "glass text-gray-400"
+                          : "glass hover:bg-[#0f3460] text-white"
                       }`}
                     >
                       GW {gw}
@@ -189,7 +189,7 @@ export default function PLSpielplanSeite() {
           </div>
 
           {selectedGW !== null && (
-            <div className="bg-[#16213e] rounded-xl overflow-hidden">
+            <div className="glass rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
                 <span className="font-semibold text-white">Spieltag {selectedGW}</span>
                 <span className="text-xs text-gray-400">
