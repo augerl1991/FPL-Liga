@@ -108,8 +108,8 @@ export default function ProfilPage() {
             <div className="flex items-center gap-3">
               <span className="text-3xl">📊</span>
               <div className="flex-1">
-                <span className="font-bold text-white group-hover:text-[#00ff87] transition-colors">Letzte Saison</span>
-                <p className="text-xs text-gray-400">Premier-League-Spielplan der Vorsaison</p>
+                <span className="font-bold text-white group-hover:text-[#00ff87] transition-colors">Liga-Archiv</span>
+                <p className="text-xs text-gray-400">Spielpläne &amp; Tabellen aller Saisonen</p>
               </div>
               <span className="text-xl text-gray-500 group-hover:text-[#00ff87] transition-colors">→</span>
             </div>

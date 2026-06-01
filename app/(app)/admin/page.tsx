@@ -817,7 +817,7 @@ export default function AdminSeite() {
           <div className="glass rounded-xl p-6">
             <h2 className="font-semibold mb-1">PL-Spielplan Modus</h2>
             <p className="text-gray-400 text-sm mb-4">
-              Steuert was unter <span className="text-white">&bdquo;Letzte Saison&ldquo;</span> im Menü angezeigt wird.
+              Steuert was unter <span className="text-white">&bdquo;Liga-Archiv&ldquo;</span> im Menü angezeigt wird.
               Wenn die neue PL-Saison startet: auf Live umschalten.
               Der historische Spielplan bleibt im <button onClick={() => setTab("history")} className="text-[#00ff87] underline">History-Tab</button> erhalten.
             </p>

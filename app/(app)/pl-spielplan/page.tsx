@@ -148,7 +148,7 @@ export default function PLSpielplanSeite() {
         )}
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Historie</h1>
+          <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Archiv</h1>
           <p className="text-xs text-gray-500 mt-0.5">Ergebnisse &amp; Gewinner aller Saisonen</p>
         </div>
 

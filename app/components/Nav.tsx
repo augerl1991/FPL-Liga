@@ -9,7 +9,7 @@ const LINKS = [
   { href: "/aufstellung", label: "Aufstellung" },
   { href: "/kader", label: "Mein Kader" },
   { href: "/alle-kader", label: "Alle Kader" },
-  { href: "/pl-spielplan", label: "Letzte Saison" },
+  { href: "/pl-spielplan", label: "Liga-Archiv" },
 ];
 
 export default function Nav() {
