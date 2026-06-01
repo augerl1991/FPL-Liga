@@ -74,10 +74,17 @@ export default function AdminSeite() {
   const [plMode, setPlMode] = useState<"history" | "live">("history");
   const [plModeMsg, setPlModeMsg] = useState("");
 
-  // Nachtragspartien
+  // Nachtragspartien – Markierung
   const [pendingGwNrs, setPendingGwNrs] = useState<number[]>([]);
   const [pendingInput, setPendingInput] = useState("");
   const [pendingMsg, setPendingMsg] = useState("");
+
+  // Nachtragspartien – Punkte mergen
+  const [mergeTargetGw, setMergeTargetGw] = useState("");
+  const [mergeSourceGw, setMergeSourceGw] = useState("");
+  const [mergePlTeams, setMergePlTeams] = useState("");
+  const [mergeMsg, setMergeMsg] = useState("");
+  const [mergeLoading, setMergeLoading] = useState(false);
 
   // Neue Saison
   const [newSeasonName, setNewSeasonName] = useState("");
@@ -313,6 +320,30 @@ export default function AdminSeite() {
   function removePendingGw(n: number) {
     const updated = pendingGwNrs.filter((x) => x !== n);
     savePendingGwNrs(updated).then(() => setPendingMsg(`✓ GW ${n} Markierung entfernt`));
+  }
+
+  async function mergeGwPoints() {
+    const ligaGw = parseInt(mergeTargetGw);
+    const fplGw = parseInt(mergeSourceGw);
+    const teams = mergePlTeams.split(",").map((t) => t.trim()).filter(Boolean);
+    if (!ligaGw || !fplGw || teams.length === 0) {
+      setMergeMsg("Alle drei Felder ausfüllen");
+      return;
+    }
+    setMergeLoading(true);
+    setMergeMsg("");
+    const res = await fetch("/api/admin/merge-gw-points", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ligaGwNumber: ligaGw, fplGwNumber: fplGw, plTeams: teams }),
+    });
+    const data = await res.json();
+    setMergeLoading(false);
+    if (res.ok) {
+      setMergeMsg(`✓ ${data.mergedPlayers} Spieler-Punkte aus FPL GW${fplGw} in Liga GW${ligaGw} gemergt · H2H neu berechnet`);
+    } else {
+      setMergeMsg(`✗ ${data.error}`);
+    }
   }
 
   // Gefilterte + sortierte Spielerliste
@@ -887,6 +918,62 @@ export default function AdminSeite() {
             )}
             {pendingGwNrs.length === 0 && <p className="text-gray-600 text-xs">Keine Spieltage markiert.</p>}
             {pendingMsg && <p className={`text-sm mt-1 ${pendingMsg.startsWith("✓") ? "text-green-400" : "text-yellow-400"}`}>{pendingMsg}</p>}
+          </div>
+
+          {/* Nachtragspartien – Punkte mergen */}
+          <div className="glass rounded-xl p-6">
+            <h2 className="font-semibold mb-1">🔀 Nachtragsspiel-Punkte eintragen</h2>
+            <p className="text-gray-400 text-sm mb-1">
+              Wenn die FPL ein Spiel in einen anderen Spieltag verschoben hat, hier die Punkte der betroffenen
+              PL-Teams in den richtigen Liga-Spieltag mergen.
+            </p>
+            <p className="text-gray-500 text-xs mb-4">
+              Die Punkte werden <strong className="text-white">addiert</strong> (nicht ersetzt) — bestehende Punkte bleiben erhalten.
+              Danach wird das H2H-Ergebnis des Liga-Spieltags automatisch neu berechnet.
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Liga-Spieltag (Ziel)</label>
+                <input
+                  value={mergeTargetGw}
+                  onChange={(e) => setMergeTargetGw(e.target.value)}
+                  type="number" min="1" max="38"
+                  placeholder="z.B. 31"
+                  className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">FPL-Spieltag (Quelle)</label>
+                <input
+                  value={mergeSourceGw}
+                  onChange={(e) => setMergeSourceGw(e.target.value)}
+                  type="number" min="1" max="38"
+                  placeholder="z.B. 36"
+                  className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white"
+                />
+              </div>
+            </div>
+            <div className="mb-3">
+              <label className="text-xs text-gray-400 mb-1 block">PL-Teams (kommagetrennt, exakte Schreibweise aus FPL)</label>
+              <input
+                value={mergePlTeams}
+                onChange={(e) => setMergePlTeams(e.target.value)}
+                placeholder="z.B. Arsenal, Chelsea"
+                className="w-full bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white"
+              />
+            </div>
+            <button
+              onClick={mergeGwPoints}
+              disabled={mergeLoading}
+              className="bg-yellow-400 text-black font-bold px-6 py-2 rounded hover:bg-yellow-300 disabled:opacity-40"
+            >
+              {mergeLoading ? "Läuft…" : "Punkte mergen & H2H neu berechnen"}
+            </button>
+            {mergeMsg && (
+              <p className={`mt-3 text-sm ${mergeMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>
+                {mergeMsg}
+              </p>
+            )}
           </div>
 
           {/* PL-Spielplan Modus */}
