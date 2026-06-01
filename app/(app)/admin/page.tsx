@@ -56,6 +56,18 @@ export default function AdminSeite() {
   const [syncMsg, setSyncMsg] = useState("");
   const [gwNum, setGwNum] = useState("");
 
+  // Deadline-Verwaltung
+  type DlRow = { id: number; label: string; deadline: string };
+  const [dlGwId, setDlGwId] = useState<number>(0);
+  const [dlList, setDlList] = useState<DlRow[]>([]);
+  const [dlDate, setDlDate] = useState("");
+  const [dlTime, setDlTime] = useState("");
+  const [dlLabel, setDlLabel] = useState("");
+  const [dlMsg, setDlMsg] = useState("");
+  const [dlAutoGw, setDlAutoGw] = useState("");
+  const [dlLoading, setDlLoading] = useState(false);
+  const [dlAllGws, setDlAllGws] = useState<{ id: number; number: number }[]>([]);
+
   // Lineup-Status
   type LineupTeam = {
     teamId: number; teamName: string; username: string;
@@ -117,6 +129,9 @@ export default function AdminSeite() {
       fetch("/api/admin/lineup-status")
         .then((r) => r.json())
         .then((d) => d.teams && setLineupStatus(d));
+      fetch("/api/gameweeks")
+        .then((r) => r.json())
+        .then((d) => Array.isArray(d) && setDlAllGws(d.map((g: { id: number; number: number }) => ({ id: g.id, number: g.number }))));
     }
     if (tab === "schedule") {
       fetch("/api/admin/team-order").then((r) => r.json()).then((d) => Array.isArray(d) && setTeamOrder(d));
@@ -344,6 +359,49 @@ export default function AdminSeite() {
     } else {
       setMergeMsg(`✗ ${data.error}`);
     }
+  }
+
+  function loadDeadlines(gwId: number) {
+    if (!gwId) return;
+    fetch(`/api/admin/deadlines?gameweekId=${gwId}`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setDlList(d));
+  }
+
+  async function addDeadline() {
+    if (!dlGwId || !dlDate || !dlTime || !dlLabel) { setDlMsg("Alle Felder ausfüllen"); return; }
+    setDlLoading(true);
+    const res = await fetch("/api/admin/deadlines", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameweekId: dlGwId, deadline: `${dlDate}T${dlTime}:00`, label: dlLabel }),
+    });
+    const d = await res.json();
+    setDlLoading(false);
+    if (res.ok) { setDlMsg("✓ Deadline hinzugefügt"); setDlDate(""); setDlTime(""); setDlLabel(""); loadDeadlines(dlGwId); }
+    else setDlMsg(`✗ ${d.error}`);
+  }
+
+  async function deleteDeadline(id: number) {
+    await fetch(`/api/admin/deadlines/${id}`, { method: "DELETE" });
+    loadDeadlines(dlGwId);
+    setDlMsg("✓ Deadline gelöscht");
+  }
+
+  async function autoGenDeadlines() {
+    const fplGw = parseInt(dlAutoGw);
+    if (!dlGwId || !fplGw) { setDlMsg("Liga-Spieltag wählen + FPL-Spieltag eingeben"); return; }
+    setDlLoading(true);
+    setDlMsg("");
+    const res = await fetch("/api/admin/deadlines", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ autoGenerate: true, gameweekId: dlGwId, fplGwNumber: fplGw }),
+    });
+    const d = await res.json();
+    setDlLoading(false);
+    if (res.ok) { setDlMsg(`✓ ${d.created} Deadlines automatisch generiert`); loadDeadlines(dlGwId); }
+    else setDlMsg(`✗ ${d.error}`);
   }
 
   // Gefilterte + sortierte Spielerliste
@@ -735,6 +793,88 @@ export default function AdminSeite() {
               </div>
             </>
           )}
+
+          {/* ── Deadline-Verwaltung ── */}
+          <div className="glass rounded-xl p-5 mt-4">
+            <h2 className="font-semibold mb-1">⏱ Spieltag-Deadlines</h2>
+            <p className="text-gray-400 text-sm mb-4">
+              Pro Spieltag eine Deadline pro Spieltag-Tag eintragen (immer 1 Min. vor dem ersten Anstoß des Tages).
+              Der Spieltag schließt mit der letzten Deadline. Ohne Deadlines können keine Aufstellungen gespeichert werden.
+            </p>
+
+            {/* GW auswählen */}
+            <div className="flex items-center gap-3 mb-4">
+              <label className="text-xs text-gray-400 shrink-0">Spieltag:</label>
+              <select
+                value={dlGwId}
+                onChange={(e) => { const id = parseInt(e.target.value); setDlGwId(id); setDlMsg(""); loadDeadlines(id); }}
+                className="bg-[#0f3460] border border-gray-600 rounded px-3 py-1.5 text-sm text-white"
+              >
+                <option value={0}>– wählen –</option>
+                {dlAllGws.map((g) => <option key={g.id} value={g.id}>GW {g.number}</option>)}
+              </select>
+            </div>
+
+            {dlGwId > 0 && (
+              <>
+                {/* Bestehende Deadlines */}
+                {dlList.length > 0 ? (
+                  <div className="mb-4 space-y-1.5">
+                    {dlList.map((dl, i) => {
+                      const dt = new Date(dl.deadline);
+                      const past = dt < new Date();
+                      return (
+                        <div key={dl.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${past ? "bg-white/5 text-gray-500" : "bg-[#00ff87]/10 ring-1 ring-[#00ff87]/20"}`}>
+                          <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                          <span className="text-sm font-semibold flex-1">{dl.label}</span>
+                          <span className={`text-xs ${past ? "text-gray-500" : "text-yellow-300"}`}>
+                            {dt.toLocaleString("de-AT", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          {past ? <span className="text-xs text-gray-600">abgelaufen</span> : <span className="text-xs text-[#00ff87]">aktiv</span>}
+                          <button onClick={() => deleteDeadline(dl.id)} className="text-red-400 hover:text-red-300 text-sm ml-1">✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-gray-600 text-sm mb-4">Noch keine Deadlines für diesen Spieltag.</p>
+                )}
+
+                {/* Auto-generieren */}
+                <div className="bg-[#00ff87]/5 rounded-lg p-3 mb-4 border border-[#00ff87]/15">
+                  <p className="text-xs text-[#00ff87] font-semibold mb-2">✨ Auto-generieren aus FPL-Spielplan</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={dlAutoGw}
+                      onChange={(e) => setDlAutoGw(e.target.value)}
+                      type="number" min="1" max="38" placeholder="FPL GW-Nr."
+                      className="w-28 bg-[#0f3460] border border-gray-600 rounded px-3 py-1.5 text-sm text-white"
+                    />
+                    <button onClick={autoGenDeadlines} disabled={dlLoading}
+                      className="bg-[#00ff87] text-black font-bold px-4 py-1.5 rounded hover:bg-green-400 text-sm disabled:opacity-40">
+                      {dlLoading ? "Lädt…" : "Generieren"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">Löscht bestehende Deadlines für diesen GW und erstellt neue aus den PL-Anstoßzeiten.</p>
+                </div>
+
+                {/* Manuell hinzufügen */}
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Manuell hinzufügen</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <input value={dlLabel} onChange={(e) => setDlLabel(e.target.value)} placeholder="Label (z.B. Fr)" className="w-20 bg-[#0f3460] border border-gray-600 rounded px-3 py-1.5 text-sm text-white" />
+                    <input value={dlDate} onChange={(e) => setDlDate(e.target.value)} type="date" className="bg-[#0f3460] border border-gray-600 rounded px-3 py-1.5 text-sm text-white" />
+                    <input value={dlTime} onChange={(e) => setDlTime(e.target.value)} type="time" className="bg-[#0f3460] border border-gray-600 rounded px-3 py-1.5 text-sm text-white" />
+                    <button onClick={addDeadline} disabled={dlLoading} className="bg-yellow-400 text-black font-bold px-4 py-1.5 rounded hover:bg-yellow-300 text-sm disabled:opacity-40">
+                      Hinzufügen
+                    </button>
+                  </div>
+                </div>
+
+                {dlMsg && <p className={`text-sm mt-2 ${dlMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{dlMsg}</p>}
+              </>
+            )}
+          </div>
         </div>
       )}
 

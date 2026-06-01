@@ -36,7 +36,8 @@ export default function AufstellungSeite() {
   const [formation, setFormation]   = useState<Formation>("4-4-2");
   const [saved, setSaved]           = useState(false);
   const [error, setError]           = useState("");
-  const [deadline, setDeadline]     = useState<string | null>(null);
+  const [allDeadlines, setAllDl]    = useState<{ id: number; label: string; deadline: string }[]>([]);
+  const [lockedTeams, setLockedTeams] = useState<Set<string>>(new Set());
   const [activeId, setActiveId]     = useState<number | null>(null);
 
   useEffect(() => {
@@ -80,13 +81,35 @@ export default function AufstellungSeite() {
         const f = `${cnt.DEF}-${cnt.MID}-${cnt.FWD}`;
         setFormation((FORMATIONS as readonly string[]).includes(f) ? (f as Formation) : "4-4-2");
       });
-    fetch(`/api/gameweeks/${selectedGW}/deadline`)
+    // Alle Deadlines für Fenster-Status
+    fetch(`/api/gameweeks/${selectedGW}/deadline?all=true`)
       .then(r => r.json())
-      .then(d => d.deadline
-        ? setDeadline(new Date(d.deadline).toLocaleString("de-AT", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }))
-        : setDeadline(null)
-      );
-  }, [selectedGW]);
+      .then((d: { id: number; label: string; deadline: string }[]) => {
+        if (!Array.isArray(d)) return;
+        setAllDl(d);
+      });
+
+    // Gesperrte PL-Teams bestimmen (Anstoß bereits gestartet)
+    setLockedTeams(new Set());
+    const gwNum = gameweeks.find(g => g.id === selectedGW)?.number;
+    if (gwNum) {
+      fetch(`/api/pl-fixtures?event=${gwNum}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.error || !Array.isArray(d.fixtures)) return;
+          const now = new Date();
+          const locked = new Set<string>();
+          for (const f of d.fixtures) {
+            if (f.gameweek === gwNum && f.kickoff && new Date(f.kickoff) <= now) {
+              locked.add(f.homeTeam);
+              locked.add(f.awayTeam);
+            }
+          }
+          setLockedTeams(locked);
+        })
+        .catch(() => {});
+    }
+  }, [selectedGW, gameweeks]);
 
   /* ── Lookups ── */
   function getInfo(id: number): Player | undefined {
@@ -96,7 +119,35 @@ export default function AufstellungSeite() {
 
   /* ── Derived ── */
   const selectedNumber = gameweeks.find(g => g.id === selectedGW)?.number ?? 0;
-  const isEditable = currentGw != null && selectedGW === currentGw.id;
+  const now = new Date();
+  const hasOpenDeadline = allDeadlines.some(d => new Date(d.deadline) > now);
+  const isEditable = currentGw != null && selectedGW === currentGw.id && hasOpenDeadline;
+
+  // Fenster-Info: welches Fenster ist aktuell offen?
+  const windowInfo = (() => {
+    if (!allDeadlines.length) return null;
+    const past = allDeadlines.filter(d => new Date(d.deadline) <= now);
+    const upcoming = allDeadlines.filter(d => new Date(d.deadline) > now);
+    if (!upcoming.length) return { open: false, label: "Spieltag geschlossen" };
+    const total = allDeadlines.length;
+    const windowNum = past.length + 1;
+    const nextDl = upcoming[0];
+    return {
+      open: true,
+      label: `Fenster ${windowNum}/${total}`,
+      until: new Date(nextDl.deadline).toLocaleString("de-AT", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+    };
+  })();
+
+  function isLocked(playerId: number) {
+    const team = getInfo(playerId)?.teamName;
+    return team ? lockedTeams.has(team) : false;
+  }
+
+  function canSwap(idA: number, idB: number): boolean {
+    // Zwei bereits gespielte Spieler können nicht getauscht werden
+    return !(isLocked(idA) && isLocked(idB));
+  }
 
   const starters = slots.filter(s => s.position <= 11).sort((a, b) => a.position - b.position);
   const bank     = slots.filter(s => s.position > 11).sort((a, b) => a.position - b.position);
@@ -156,6 +207,8 @@ export default function AufstellungSeite() {
   function moveToBank(playerId: number) {
     if (!isEditable) return;
     if (bank.length >= 7) { setError("Bank ist voll (7 Spieler)"); return; }
+    // Wenn Spieler bereits gespielt hat: nur erlaubt wenn kein anderer gesperrter Bankspieler eingewechselt wird
+    // (einfaches Auf-die-Bank-legen ist immer ok, da kein Tauschpartner bestimmt wird)
     setSlots(prev => prev.map(s => s.fplPlayerId === playerId ? { ...s, position: 12 + bank.length } : s));
     setActiveId(null);
     setError("");
@@ -172,6 +225,28 @@ export default function AufstellungSeite() {
       return;
     }
     setSlots(prev => prev.map(s => s.fplPlayerId === playerId ? { ...s, position: starters.length + 1 } : s));
+    setError("");
+  }
+
+  // Direkter Tausch zweier Spieler (Starter ↔ Bank oder Bank ↔ Bank)
+  function swapWithActive(targetId: number) {
+    if (!activeId || activeId === targetId) { setActiveId(null); return; }
+    if (!canSwap(activeId, targetId)) {
+      setError("Zwei bereits gespielte Spieler können nicht getauscht werden");
+      setActiveId(null);
+      return;
+    }
+    setSlots(prev => {
+      const aSlot = prev.find(s => s.fplPlayerId === activeId);
+      const bSlot = prev.find(s => s.fplPlayerId === targetId);
+      if (!aSlot || !bSlot) return prev;
+      return prev.map(s => {
+        if (s.fplPlayerId === activeId) return { ...s, position: bSlot.position };
+        if (s.fplPlayerId === targetId) return { ...s, position: aSlot.position };
+        return s;
+      });
+    });
+    setActiveId(null);
     setError("");
   }
 
@@ -213,18 +288,33 @@ export default function AufstellungSeite() {
     const info = getInfo(slot.fplPlayerId);
     if (!info) return null;
     const isActive = isEditable && activeId === slot.fplPlayerId;
+    const locked = isLocked(slot.fplPlayerId);
+
+    function handleClick(e: React.MouseEvent) {
+      if (!isEditable) return;
+      e.stopPropagation();
+      // Falls ein anderer Spieler bereits aktiv: direkter Tausch
+      if (activeId && activeId !== slot.fplPlayerId) {
+        swapWithActive(slot.fplPlayerId);
+      } else {
+        setActiveId(isActive ? null : slot.fplPlayerId);
+      }
+    }
 
     return (
       <div className="flex flex-col items-center gap-1.5 select-none">
         <div
-          onClick={e => { if (!isEditable) return; e.stopPropagation(); setActiveId(isActive ? null : slot.fplPlayerId); }}
+          onClick={handleClick}
           className={`rounded-lg px-2 py-2 text-center w-[76px] transition-all shadow-md ${isEditable ? "cursor-pointer" : "cursor-default"} ${
             isActive
               ? "bg-white text-black scale-105 shadow-[#00ff87]/40 shadow-lg"
+              : locked
+              ? "bg-orange-900/60 backdrop-blur-sm hover:bg-orange-900/80 text-white ring-1 ring-orange-500/40"
               : "bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white"
           }`}
         >
           <div className="flex justify-center gap-1 mb-1 h-4">
+            {locked && !isActive && <span className="text-orange-400 text-[9px] leading-4">🔒</span>}
             {slot.isCaptain     && <span className="bg-[#00ff87] text-black text-[9px] font-black px-1.5 rounded-full leading-4">C</span>}
             {slot.isViceCaptain && <span className="bg-yellow-400 text-black text-[9px] font-black px-1.5 rounded-full leading-4">V</span>}
           </div>
@@ -238,14 +328,16 @@ export default function AufstellungSeite() {
 
         {isActive && (
           <div className="flex gap-1 bg-black/90 border border-white/10 rounded-lg p-1.5 shadow-xl z-10">
-            <button onClick={e => { e.stopPropagation(); setCaptain(slot.fplPlayerId); }}
-              className="text-[10px] bg-[#00ff87] text-black px-2 py-1 rounded font-bold hover:bg-green-400">C</button>
-            <button onClick={e => { e.stopPropagation(); setVice(slot.fplPlayerId); }}
-              className="text-[10px] bg-yellow-400 text-black px-2 py-1 rounded font-bold hover:bg-yellow-300">Vize</button>
+            {!locked && <>
+              <button onClick={e => { e.stopPropagation(); setCaptain(slot.fplPlayerId); }}
+                className="text-[10px] bg-[#00ff87] text-black px-2 py-1 rounded font-bold hover:bg-green-400">C</button>
+              <button onClick={e => { e.stopPropagation(); setVice(slot.fplPlayerId); }}
+                className="text-[10px] bg-yellow-400 text-black px-2 py-1 rounded font-bold hover:bg-yellow-300">Vize</button>
+            </>}
             <button onClick={e => { e.stopPropagation(); moveToBank(slot.fplPlayerId); }}
               className="text-[10px] bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-500">Bank</button>
-            <button onClick={e => { e.stopPropagation(); removeFromSlots(slot.fplPlayerId); }}
-              className="text-[10px] bg-red-700 text-white px-2 py-1 rounded hover:bg-red-600">✕</button>
+            {!locked && <button onClick={e => { e.stopPropagation(); removeFromSlots(slot.fplPlayerId); }}
+              className="text-[10px] bg-red-700 text-white px-2 py-1 rounded hover:bg-red-600">✕</button>}
           </div>
         )}
       </div>
@@ -316,14 +408,24 @@ export default function AufstellungSeite() {
         </div>
       </div>
 
-      {/* Status-Zeile */}
+      {/* Status-Zeile + Fenster-Info */}
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <span className="text-sm font-bold text-white">Spieltag {selectedNumber}</span>
         {isEditable
           ? <span className="text-[#00ff87] font-semibold">● Bearbeitung aktiv</span>
           : <span className="text-gray-500 font-semibold">🔒 Nur Ansicht</span>}
-        {deadline && isEditable && (
-          <span className="text-gray-400">Deadline: <span className="text-yellow-400 font-medium">{deadline}</span></span>
+        {windowInfo && isEditable && windowInfo.open && (
+          <span className="bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/30 px-2 py-0.5 rounded-full">
+            {windowInfo.label} · bis {windowInfo.until}
+          </span>
+        )}
+        {windowInfo && !windowInfo.open && currentGw?.id === selectedGW && (
+          <span className="bg-red-900/30 text-red-400 ring-1 ring-red-500/30 px-2 py-0.5 rounded-full">
+            Spieltag geschlossen
+          </span>
+        )}
+        {lockedTeams.size > 0 && isEditable && (
+          <span className="text-orange-400 text-[10px]">🔒 {lockedTeams.size} PL-Teams haben gespielt</span>
         )}
         <span className="ml-auto text-gray-500">{starters.length}/11 Starter · {bank.length}/7 Bank</span>
       </div>

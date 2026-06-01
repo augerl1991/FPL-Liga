@@ -8,6 +8,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const gameweekId = parseInt(id);
+  const { searchParams } = new URL(_req.url);
+
+  if (searchParams.get("all") === "true") {
+    const all = await prisma.gameweekDeadline.findMany({
+      where: { gameweekId },
+      orderBy: { deadline: "asc" },
+    });
+    return NextResponse.json(all);
+  }
 
   // Nächste offene Deadline für diesen Spieltag
   const deadline = await prisma.gameweekDeadline.findFirst({
