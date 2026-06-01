@@ -302,10 +302,18 @@ export default function AdminSeite() {
   ] as const;
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-yellow-400 mb-6">Admin-Bereich</h1>
+    <div className="rounded-2xl ring-1 ring-yellow-400/20 p-4 sm:p-6"
+      style={{ background: "linear-gradient(160deg, rgba(251,191,36,0.06) 0%, transparent 40%)" }}>
 
-      <div className="flex gap-2 mb-6">
+      {/* Admin-Kennung */}
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-yellow-400">Admin-Bereich</h1>
+        <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/30">
+          🔐 Admin-Modus
+        </span>
+      </div>
+
+      <div className="flex gap-2 mb-6 flex-wrap">
         {tabs.map((t) => (
           <button
             key={t.key}
