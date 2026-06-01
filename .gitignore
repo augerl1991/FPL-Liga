@@ -46,3 +46,5 @@ next-env.d.ts
 
 # Auction data (private, nur lokal)
 scripts/auction-data.json
+
+.vercel

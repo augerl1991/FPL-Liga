@@ -14,7 +14,9 @@
     "seed:users": "npx tsx --env-file=.env scripts/seed-users.ts",
     "seed:fpl": "npx tsx --env-file=.env scripts/seed-fpl.ts",
     "seed:squads": "npx tsx --env-file=.env scripts/seed-squads.ts",
-    "migrate:turso": "npx tsx --env-file=.env scripts/migrate-turso.ts"
+    "migrate:turso": "npx tsx --env-file=.env scripts/migrate-turso.ts && npx tsx --env-file=.env scripts/check-schema-drift.ts --apply",
+    "db:drift": "npx tsx --env-file=.env scripts/check-schema-drift.ts",
+    "db:drift:apply": "npx tsx --env-file=.env scripts/check-schema-drift.ts --apply"
   },
   "dependencies": {
     "@libsql/client": "0.8.0",
