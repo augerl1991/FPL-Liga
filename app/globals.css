@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 :root {
+  /* Offizielle FPL-Markenfarben */
+  --fpl-purple: #37003c;
+  --fpl-green: #00ff87;
+  --fpl-cyan: #04f5ff;
+  --fpl-magenta: #e90052;
   --accent: #00ff87;
-  --accent-violet: #b026ff;
 }
 
 html {
@@ -16,10 +20,11 @@ body {
   font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: #0a0e1a;
   background-image:
-    radial-gradient(60rem 60rem at 15% -10%, rgba(176, 38, 255, 0.16), transparent 60%),
-    radial-gradient(55rem 55rem at 110% 10%, rgba(0, 255, 135, 0.12), transparent 55%),
-    radial-gradient(50rem 50rem at 50% 120%, rgba(56, 0, 60, 0.35), transparent 60%),
-    linear-gradient(180deg, #0b0f1e 0%, #0a0e1a 100%);
+    radial-gradient(58rem 58rem at 12% -8%, rgba(55, 0, 60, 0.5), transparent 60%),
+    radial-gradient(50rem 50rem at 108% 6%, rgba(0, 255, 135, 0.1), transparent 55%),
+    radial-gradient(42rem 42rem at 95% 95%, rgba(233, 0, 82, 0.08), transparent 55%),
+    radial-gradient(40rem 40rem at 0% 100%, rgba(4, 245, 255, 0.07), transparent 55%),
+    linear-gradient(180deg, #0c0a16 0%, #0a0e1a 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }
