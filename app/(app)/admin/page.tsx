@@ -74,6 +74,11 @@ export default function AdminSeite() {
   const [plMode, setPlMode] = useState<"history" | "live">("history");
   const [plModeMsg, setPlModeMsg] = useState("");
 
+  // Nachtragspartien
+  const [pendingGwNrs, setPendingGwNrs] = useState<number[]>([]);
+  const [pendingInput, setPendingInput] = useState("");
+  const [pendingMsg, setPendingMsg] = useState("");
+
   // Neue Saison
   const [newSeasonName, setNewSeasonName] = useState("");
   const [newSeasonMsg, setNewSeasonMsg] = useState("");
@@ -113,6 +118,12 @@ export default function AdminSeite() {
       fetch("/api/admin/config?key=plMode")
         .then((r) => r.json())
         .then((d) => setPlMode(d.value === "live" ? "live" : "history"));
+      fetch("/api/admin/config?key=pendingGwNrs")
+        .then((r) => r.json())
+        .then((d) => {
+          const nrs = (d.value ?? "").split(",").map(Number).filter((n: number) => n > 0);
+          setPendingGwNrs(nrs);
+        });
     }
   }, [tab, loadPlayers]);
 
@@ -279,6 +290,29 @@ export default function AdminSeite() {
     } else {
       setPlModeMsg("✗ Fehler beim Speichern");
     }
+  }
+
+  async function savePendingGwNrs(nrs: number[]) {
+    const value = nrs.join(",");
+    await fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "pendingGwNrs", value }),
+    });
+    setPendingGwNrs(nrs);
+  }
+
+  function addPendingGw() {
+    const n = parseInt(pendingInput);
+    if (!n || n < 1 || n > 38) { setPendingMsg("Gültige GW-Nummer 1–38 eingeben"); return; }
+    if (pendingGwNrs.includes(n)) { setPendingMsg(`GW ${n} ist bereits markiert`); return; }
+    const updated = [...pendingGwNrs, n].sort((a, b) => a - b);
+    savePendingGwNrs(updated).then(() => { setPendingInput(""); setPendingMsg(`✓ GW ${n} als ausstehend markiert`); });
+  }
+
+  function removePendingGw(n: number) {
+    const updated = pendingGwNrs.filter((x) => x !== n);
+    savePendingGwNrs(updated).then(() => setPendingMsg(`✓ GW ${n} Markierung entfernt`));
   }
 
   // Gefilterte + sortierte Spielerliste
@@ -820,6 +854,40 @@ export default function AdminSeite() {
           </div>
 
           {syncMsg && <p className="text-sm text-green-400">{syncMsg}</p>}
+
+          {/* Nachtragspartien */}
+          <div className="glass rounded-xl p-6">
+            <h2 className="font-semibold mb-1">⚠️ Nachtragspartien</h2>
+            <p className="text-gray-400 text-sm mb-4">
+              Spieltage mit noch ausstehenden Nachtragspartien markieren — im Spielplan erscheint ein ⚠️-Hinweis.
+              Nach dem Resync des Spieltags die Markierung hier wieder entfernen.
+            </p>
+            <div className="flex gap-2 mb-3">
+              <input
+                value={pendingInput}
+                onChange={(e) => { setPendingInput(e.target.value); setPendingMsg(""); }}
+                onKeyDown={(e) => e.key === "Enter" && addPendingGw()}
+                type="number" min="1" max="38"
+                placeholder="GW-Nummer"
+                className="flex-1 bg-[#0f3460] border border-gray-600 rounded px-3 py-2 text-white"
+              />
+              <button onClick={addPendingGw} className="bg-yellow-400 text-black font-bold px-4 py-2 rounded hover:bg-yellow-300">
+                Markieren
+              </button>
+            </div>
+            {pendingGwNrs.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {pendingGwNrs.map((n) => (
+                  <div key={n} className="flex items-center gap-1.5 bg-yellow-400/15 ring-1 ring-yellow-400/40 text-yellow-300 px-2.5 py-1 rounded-full text-sm">
+                    <span>⚠️ GW {n}</span>
+                    <button onClick={() => removePendingGw(n)} className="text-yellow-400/60 hover:text-white ml-0.5 text-base leading-none">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {pendingGwNrs.length === 0 && <p className="text-gray-600 text-xs">Keine Spieltage markiert.</p>}
+            {pendingMsg && <p className={`text-sm mt-1 ${pendingMsg.startsWith("✓") ? "text-green-400" : "text-yellow-400"}`}>{pendingMsg}</p>}
+          </div>
 
           {/* PL-Spielplan Modus */}
           <div className="glass rounded-xl p-6">

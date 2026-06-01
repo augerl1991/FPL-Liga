@@ -8,6 +8,7 @@ type Gameweek = { id: number; number: number; matches: Match[] };
 export default function SpielplanSeite() {
   const [gameweeks, setGameweeks] = useState<Gameweek[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [pendingGwNrs, setPendingGwNrs] = useState<number[]>([]);
 
   useEffect(() => {
     fetch("/api/spielplan?seasonId=1")
@@ -15,11 +16,17 @@ export default function SpielplanSeite() {
       .then((d) => {
         if (Array.isArray(d)) {
           setGameweeks(d);
-          // Ersten nicht-gespielten GW aufklappen
           const first = d.find((gw: Gameweek) => gw.matches.some((m) => !m.played));
           if (first) setExpanded(first.id);
         }
       });
+    fetch("/api/admin/config?key=pendingGwNrs")
+      .then((r) => r.json())
+      .then((d) => {
+        const nrs = (d.value ?? "").split(",").map(Number).filter((n: number) => n > 0);
+        setPendingGwNrs(nrs);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -28,13 +35,17 @@ export default function SpielplanSeite() {
       <div className="space-y-2">
         {gameweeks.map((gw) => {
           const allPlayed = gw.matches.every((m) => m.played);
+          const isPending = pendingGwNrs.includes(gw.number);
           return (
-            <div key={gw.id} className="glass rounded-xl overflow-hidden">
+            <div key={gw.id} className={`glass rounded-xl overflow-hidden ${isPending ? "ring-1 ring-yellow-400/30" : ""}`}>
               <button
                 onClick={() => setExpanded(expanded === gw.id ? null : gw.id)}
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#0f3460] transition-colors"
               >
-                <span className="font-semibold">Spieltag {gw.number}</span>
+                <span className="font-semibold flex items-center gap-2">
+                  Spieltag {gw.number}
+                  {isPending && <span title="Nachtragspartie ausstehend" className="text-xs font-normal text-yellow-300 bg-yellow-400/15 px-2 py-0.5 rounded-full ring-1 ring-yellow-400/30">⚠️ Nachtrag ausstehend</span>}
+                </span>
                 <span className={`text-xs px-2 py-0.5 rounded ${allPlayed ? "bg-green-800 text-green-300" : "bg-gray-700 text-gray-400"}`}>
                   {allPlayed ? "Gespielt" : "Ausstehend"}
                 </span>
