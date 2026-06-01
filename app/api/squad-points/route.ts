@@ -16,16 +16,25 @@ export async function GET() {
 
   const squadIds = user.team.squadPlayers.map((s) => s.fplPlayerId);
 
-  // Letzte (max. 5) Spieltage mit eingetragenen Punkten – über alle Spieler,
-  // damit auch Spieltage ohne Punkte für den eigenen Kader korrekt erscheinen.
-  const recentGws = await prisma.gameweek.findMany({
+  // Anker = zuletzt GESPIELTER Spieltag (höchste Nummer mit eingetragenen Punkten).
+  // Davon ausgehend die letzten bis zu 5 Spieltage als zusammenhängendes Fenster,
+  // z.B. zuletzt gespielt = 9  ->  Spieltage 5–9.
+  const latest = await prisma.gameweek.findFirst({
     where: { weeklyPoints: { some: {} } },
-    select: { id: true, number: true },
     orderBy: { number: "desc" },
-    take: 5,
+    select: { seasonId: true, number: true },
   });
 
-  const gameweeks = recentGws.sort((a, b) => a.number - b.number); // aufsteigend für die Anzeige
+  if (!latest) return NextResponse.json({ gameweeks: [], points: {} });
+
+  const gameweeks = await prisma.gameweek.findMany({
+    where: {
+      seasonId: latest.seasonId,
+      number: { gte: latest.number - 4, lte: latest.number },
+    },
+    select: { id: true, number: true },
+    orderBy: { number: "asc" }, // aufsteigend für die Anzeige
+  });
 
   if (squadIds.length === 0 || gameweeks.length === 0)
     return NextResponse.json({ gameweeks, points: {} });
