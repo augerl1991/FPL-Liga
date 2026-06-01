@@ -5,6 +5,8 @@ type Player    = { id: number; webName: string; position: string; teamName: stri
 type SlotData  = { fplPlayerId: number; position: number; isCaptain: boolean; isViceCaptain: boolean };
 type SquadPlayer = { id: number; boughtFor: number; fplPlayer: Player };
 type GW = { id: number; number: number };
+type ApiSlot = { fplPlayerId: number; position: number; isCaptain?: boolean; isViceCaptain?: boolean; fplPlayer?: Player };
+type LineupResp = { slots?: ApiSlot[]; carriedOver?: boolean } | null;
 
 const POS_COLORS: Record<string, string> = {
   GK:  "bg-yellow-400 text-black",
@@ -54,12 +56,12 @@ export default function AufstellungSeite() {
     setError("");
     fetch(`/api/lineup?gameweekId=${selectedGW}`)
       .then(r => r.json())
-      .then((d: any) => {
-        const raw = d?.slots ?? [];
+      .then((d: LineupResp) => {
+        const raw: ApiSlot[] = d?.slots ?? [];
         const extra: Record<number, Player> = {};
         for (const s of raw) if (s.fplPlayer) extra[s.fplPlayerId] = s.fplPlayer;
         setExtra(extra);
-        setSlots(raw.map((s: any) => ({
+        setSlots(raw.map((s) => ({
           fplPlayerId: s.fplPlayerId,
           position: s.position,
           isCaptain: s.isCaptain ?? false,

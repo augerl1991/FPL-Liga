@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
  * vollständig gespielt wurde. Sobald alle Matches eines Spieltags played=true
  * sind, gilt der nächste als aktuell.
  */
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 });
 
