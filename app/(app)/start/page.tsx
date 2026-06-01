@@ -34,11 +34,8 @@ export default function StartPage() {
 
   return (
     <div className="space-y-8">
-      {/* Dezente Leiste oben rechts: Historie + Profil */}
+      {/* Dezente Leiste oben rechts: Profil */}
       <div className="flex justify-end gap-2 text-xs">
-        <Link href="/pl-spielplan" className="flex items-center gap-1.5 text-gray-400 hover:text-white glass-soft rounded-full px-3 py-1.5 transition-colors">
-          <span>📊</span> Historie
-        </Link>
         <Link href="/profil" className="flex items-center gap-1.5 text-gray-400 hover:text-white glass-soft rounded-full px-3 py-1.5 transition-colors">
           <span>⚙️</span> Profil
         </Link>
