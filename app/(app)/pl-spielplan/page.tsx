@@ -30,6 +30,7 @@ export default function PLSpielplanSeite() {
   })();
   const [historyView, setHistoryView] = useState<"spielplan" | "gewinner">("spielplan");
   const [seasonIdx, setSeasonIdx] = useState(defaultSeasonIdx);
+  const [seasonSubView, setSeasonSubView] = useState<"schedule" | "table">("schedule");
   const [historyGW, setHistoryGW] = useState(1);
   const historyRef = useRef<HTMLDivElement>(null);
   const seasonRef = useRef<HTMLButtonElement>(null);
@@ -85,6 +86,32 @@ export default function PLSpielplanSeite() {
 
   if (plMode === null) return <p className="text-gray-400 text-center py-16">Lädt…</p>;
 
+  /* ── Tabelle aus Spieldaten berechnen ── */
+  type Standing = {
+    team: string; played: number; won: number; drawn: number; lost: number;
+    gf: number; ga: number; gd: number; pts: number;
+  };
+  function calcTable(data: typeof SEASONS[0]["data"]): Standing[] {
+    const map = new Map<string, Standing>();
+    const get = (name: string) => {
+      if (!map.has(name))
+        map.set(name, { team: name, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 });
+      return map.get(name)!;
+    };
+    for (const gw of data) {
+      for (const m of gw.matches) {
+        if (m.hs === null || m.as === null) continue;
+        const h = get(m.home), a = get(m.away);
+        h.played++; h.gf += m.hs; h.ga += m.as; h.gd = h.gf - h.ga;
+        a.played++; a.gf += m.as; a.ga += m.hs; a.gd = a.gf - a.ga;
+        if (m.hs > m.as) { h.won++; h.pts += 3; a.lost++; }
+        else if (m.hs < m.as) { a.won++; a.pts += 3; h.lost++; }
+        else { h.drawn++; h.pts++; a.drawn++; a.pts++; }
+      }
+    }
+    return [...map.values()].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+  }
+
   /* ══════════════════════════════════════════
      HISTORY MODE
   ══════════════════════════════════════════ */
@@ -96,6 +123,7 @@ export default function PLSpielplanSeite() {
     function selectSeason(idx: number) {
       setSeasonIdx(idx);
       setHistoryGW(1);
+      setSeasonSubView("schedule");
     }
 
     return (
@@ -207,6 +235,75 @@ export default function PLSpielplanSeite() {
               </div>
             ) : (
               <>
+                {/* Sub-View Toggle: Spielplan | Tabelle */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setSeasonSubView("schedule")}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                      seasonSubView === "schedule" ? "bg-[#04f5ff] text-black" : "glass-soft text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Spielplan
+                  </button>
+                  <button
+                    onClick={() => setSeasonSubView("table")}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                      seasonSubView === "table" ? "bg-[#04f5ff] text-black" : "glass-soft text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Tabelle
+                  </button>
+                </div>
+
+                {/* ── TABELLE ── */}
+                {seasonSubView === "table" && (() => {
+                  const rows = calcTable(season.data);
+                  if (rows.length === 0)
+                    return <p className="text-gray-500 text-sm py-4">Noch keine gespielten Spiele.</p>;
+                  return (
+                    <div className="glass rounded-xl overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+                        <span className="font-semibold text-white">Tabelle {season.label}</span>
+                        <span className="text-xs text-gray-500">{rows[0].played} GW gespielt</span>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-gray-700">
+                            <th className="px-4 py-2 text-left w-6">#</th>
+                            <th className="px-4 py-2 text-left">Team</th>
+                            <th className="px-2 py-2 text-center">Sp</th>
+                            <th className="px-2 py-2 text-center">S</th>
+                            <th className="px-2 py-2 text-center">U</th>
+                            <th className="px-2 py-2 text-center">N</th>
+                            <th className="px-2 py-2 text-center">Tore</th>
+                            <th className="px-2 py-2 text-center">Diff</th>
+                            <th className="px-4 py-2 text-center font-bold text-white">Pkt</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((r, i) => (
+                            <tr key={r.team} className="border-t border-gray-800 hover:bg-white/5 transition-colors">
+                              <td className="px-4 py-2.5 text-gray-500 text-xs">{i + 1}</td>
+                              <td className="px-4 py-2.5 font-semibold text-white">{r.team}</td>
+                              <td className="px-2 py-2.5 text-center text-gray-400">{r.played}</td>
+                              <td className="px-2 py-2.5 text-center text-[#00ff87]">{r.won}</td>
+                              <td className="px-2 py-2.5 text-center text-gray-400">{r.drawn}</td>
+                              <td className="px-2 py-2.5 text-center text-red-400">{r.lost}</td>
+                              <td className="px-2 py-2.5 text-center text-gray-300">{r.gf}:{r.ga}</td>
+                              <td className={`px-2 py-2.5 text-center ${r.gd > 0 ? "text-[#00ff87]" : r.gd < 0 ? "text-red-400" : "text-gray-400"}`}>
+                                {r.gd > 0 ? "+" : ""}{r.gd}
+                              </td>
+                              <td className="px-4 py-2.5 text-center font-bold text-white">{r.pts}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+
+                {/* ── SPIELPLAN (GW-Tabs + Matches) ── */}
+                {seasonSubView === "schedule" && <>
                 <div className="overflow-x-auto pb-2 mb-6 no-scrollbar">
                   <div className="flex gap-1.5 w-max">
                     {season.data.map(({ gw }) => {
@@ -267,6 +364,7 @@ export default function PLSpielplanSeite() {
                     </div>
                   </div>
                 )}
+                </>}
               </>
             )}
           </>
