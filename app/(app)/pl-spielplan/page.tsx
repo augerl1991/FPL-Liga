@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PREV_SEASON, PREV_SEASON_NAME } from "@/lib/prev-season-data";
+import { SEASONS } from "@/lib/prev-season-data";
 
 /* ── Live-FPL-Typen ── */
 type Fixture = {
@@ -23,8 +23,15 @@ export default function PLSpielplanSeite() {
   const [plMode, setPlMode] = useState<"history" | "live" | null>(null);
 
   /* ── History-State ── */
+  // Neueste Saison mit Daten als Standard; fallback: letzte im Array
+  const defaultSeasonIdx = (() => {
+    const last = [...SEASONS].reverse().findIndex((s) => s.data.length > 0);
+    return last >= 0 ? SEASONS.length - 1 - last : SEASONS.length - 1;
+  })();
+  const [seasonIdx, setSeasonIdx] = useState(defaultSeasonIdx);
   const [historyGW, setHistoryGW] = useState(1);
   const historyRef = useRef<HTMLDivElement>(null);
+  const seasonRef = useRef<HTMLButtonElement>(null);
 
   /* ── Live-State ── */
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
@@ -60,6 +67,11 @@ export default function PLSpielplanSeite() {
       .catch(() => { setLiveError("FPL API nicht erreichbar"); setLiveLoading(false); });
   }, [plMode]);
 
+  /* Scroll to selected season tab */
+  useEffect(() => {
+    seasonRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [seasonIdx]);
+
   /* Scroll to current GW */
   useEffect(() => {
     historyRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
@@ -74,73 +86,119 @@ export default function PLSpielplanSeite() {
      HISTORY MODE
   ══════════════════════════════════════════ */
   if (plMode === "history") {
-    const gwData = PREV_SEASON.find((g) => g.gw === historyGW);
+    const season = SEASONS[seasonIdx];
+    const gwData = season.data.find((g) => g.gw === historyGW);
+    const hasData = season.data.length > 0;
+
+    function selectSeason(idx: number) {
+      setSeasonIdx(idx);
+      setHistoryGW(1);
+    }
+
     return (
       <div>
-        <div className="mb-2">
-          <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Spielplan {PREV_SEASON_NAME}</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Ergebnisse der vergangenen Saison</p>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Historie</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Ergebnisse aller Saisonen</p>
         </div>
 
-        <div className="overflow-x-auto pb-2 mb-6">
+        {/* Saison-Tabs */}
+        <div className="overflow-x-auto pb-2 mb-5 no-scrollbar">
           <div className="flex gap-1.5 w-max">
-            {PREV_SEASON.map(({ gw }) => {
-              const gwMatches = PREV_SEASON.find((g) => g.gw === gw)?.matches ?? [];
-              const allDone = gwMatches.every((m) => m.hs !== null && m.as !== null);
-              const isCurrent = gw === historyGW;
+            {SEASONS.map((s, i) => {
+              const active = i === seasonIdx;
               return (
-                <div key={gw} ref={isCurrent ? historyRef : null}>
-                  <button
-                    onClick={() => setHistoryGW(gw)}
-                    className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
-                      isCurrent ? "bg-[#00ff87] text-black"
-                        : allDone ? "glass text-gray-400"
-                        : "glass hover:bg-[#0f3460] text-white"
-                    }`}
-                  >
-                    GW {gw}
-                  </button>
-                </div>
+                <button
+                  key={s.label}
+                  ref={active ? seasonRef : null}
+                  onClick={() => selectSeason(i)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+                    active
+                      ? "bg-[#00ff87] text-black"
+                      : s.data.length > 0
+                      ? "glass text-white hover:bg-[#0f3460]"
+                      : "glass text-gray-500 hover:text-gray-300"
+                  }`}
+                >
+                  {s.label}
+                </button>
               );
             })}
           </div>
         </div>
 
-        {gwData && (
-          <div className="glass rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-              <span className="font-semibold text-white">Spieltag {historyGW}</span>
-              <span className="text-xs text-gray-400">
-                {gwData.matches.filter((m) => m.hs !== null && m.as !== null).length} / {gwData.matches.length} gespielt
-              </span>
-            </div>
-            <div>
-              {gwData.matches.map((m, i) => {
-                const finished = m.hs !== null && m.as !== null;
-                const homeWin = finished && m.hs! > m.as!;
-                const awayWin = finished && m.as! > m.hs!;
-                return (
-                  <div key={i} className="flex items-center px-4 py-3 border-b border-gray-800 last:border-0">
-                    <div className="flex-1 text-right">
-                      <span className={`text-sm font-semibold ${homeWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
-                        {m.home}
-                      </span>
-                    </div>
-                    <div className="mx-4 min-w-[64px] text-center">
-                      {finished
-                        ? <span className="text-lg font-bold text-[#00ff87]">{m.hs} : {m.as}</span>
-                        : <span className="text-xs text-gray-500">vs</span>}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <span className={`text-sm font-semibold ${awayWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
-                        {m.away}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Spieltag-Tabs (nur wenn Daten vorhanden) */}
+        {!hasData ? (
+          <div className="glass rounded-xl px-6 py-12 text-center text-gray-500">
+            <div className="text-4xl mb-3">📂</div>
+            <p className="font-semibold text-gray-400">Keine Daten für {season.label}</p>
+            <p className="text-sm mt-1">Die Ergebnisse dieser Saison wurden noch nicht eingetragen.</p>
           </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto pb-2 mb-6 no-scrollbar">
+              <div className="flex gap-1.5 w-max">
+                {season.data.map(({ gw }) => {
+                  const gwMatches = season.data.find((g) => g.gw === gw)?.matches ?? [];
+                  const allDone = gwMatches.every((m) => m.hs !== null && m.as !== null);
+                  const isCurrent = gw === historyGW;
+                  return (
+                    <div key={gw} ref={isCurrent ? historyRef : null}>
+                      <button
+                        onClick={() => setHistoryGW(gw)}
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${
+                          isCurrent ? "bg-[#04f5ff] text-black"
+                            : allDone ? "glass text-gray-400"
+                            : "glass hover:bg-[#0f3460] text-white"
+                        }`}
+                      >
+                        GW {gw}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {gwData && (
+              <div className="glass rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+                  <span className="font-semibold text-white">
+                    {season.label} · Spieltag {historyGW}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {gwData.matches.filter((m) => m.hs !== null && m.as !== null).length} / {gwData.matches.length} gespielt
+                  </span>
+                </div>
+                <div>
+                  {gwData.matches.map((m, i) => {
+                    const finished = m.hs !== null && m.as !== null;
+                    const homeWin = finished && m.hs! > m.as!;
+                    const awayWin = finished && m.as! > m.hs!;
+                    return (
+                      <div key={i} className="flex items-center px-4 py-3 border-b border-gray-800 last:border-0">
+                        <div className="flex-1 text-right">
+                          <span className={`text-sm font-semibold ${homeWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
+                            {m.home}
+                          </span>
+                        </div>
+                        <div className="mx-4 min-w-[64px] text-center">
+                          {finished
+                            ? <span className="text-lg font-bold text-[#00ff87]">{m.hs} : {m.as}</span>
+                            : <span className="text-xs text-gray-500">vs</span>}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <span className={`text-sm font-semibold ${awayWin ? "text-[#00ff87]" : finished ? "text-white" : "text-gray-400"}`}>
+                            {m.away}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     );

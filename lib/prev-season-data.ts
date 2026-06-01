@@ -7,6 +7,7 @@ export type HistoricMatch = {
 
 export type HistoricGW = { gw: number; matches: HistoricMatch[] };
 
+/** @deprecated Verwende SEASONS stattdessen */
 export const PREV_SEASON_NAME = "Saison 2025/26";
 
 export const PREV_SEASON: HistoricGW[] = [
@@ -276,4 +277,22 @@ export const PREV_SEASON: HistoricGW[] = [
     { home: "Augerl FC",             away: "Reinildojul",         hs: null, as: null },
     { home: "FC Salaha-DEF",         away: "Iwobi Wan-Kenobi",    hs: null, as: null },
   ]},
+];
+
+// ── Alle 11 Liga-Saisonen von 2014/15 bis 2025/26 ──────────────────────────
+export type Season = { label: string; data: HistoricGW[] };
+
+export const SEASONS: Season[] = [
+  { label: "2014/15", data: [] },
+  { label: "2015/16", data: [] },
+  { label: "2016/17", data: [] },
+  { label: "2017/18", data: [] },
+  { label: "2018/19", data: [] },
+  { label: "2019/20", data: [] },
+  { label: "2020/21", data: [] },
+  { label: "2021/22", data: [] },
+  { label: "2022/23", data: [] },
+  { label: "2023/24", data: [] },
+  { label: "2024/25", data: [] },
+  { label: "2025/26", data: PREV_SEASON },
 ];
