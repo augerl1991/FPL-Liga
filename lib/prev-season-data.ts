@@ -7,7 +7,7 @@ export type HistoricMatch = {
 
 export type HistoricGW = { gw: number; matches: HistoricMatch[] };
 
-export const PREV_SEASON_NAME = "Saison 2024/25";
+export const PREV_SEASON_NAME = "Saison 2025/26";
 
 export const PREV_SEASON: HistoricGW[] = [
   { gw: 1, matches: [

@@ -275,7 +275,7 @@ export default function AdminSeite() {
       setPlMode(newMode);
       setPlModeMsg(newMode === "live"
         ? "✓ Spielplan zeigt jetzt Live-PL-Daten · History unter diesem Tab verfügbar"
-        : "✓ Spielplan zeigt jetzt Saison-2024/25-Daten");
+        : "✓ Spielplan zeigt jetzt Saison-2025/26-Daten");
     } else {
       setPlModeMsg("✗ Fehler beim Speichern");
     }
@@ -721,7 +721,7 @@ export default function AdminSeite() {
           <div className="glass rounded-xl p-6 max-w-md">
             <h2 className="font-semibold mb-1">Schritt 2a: Spielplan aus Vorjahr übernehmen</h2>
             <p className="text-gray-400 text-sm mb-4">
-              Übernimmt die exakten Paarungen (GW1–38) aus Saison 2024/25 und mappt sie 1:1 auf die aktuellen Teams nach sortOrder.
+              Übernimmt die exakten Paarungen (GW1–38) aus Saison 2025/26 und mappt sie 1:1 auf die aktuellen Teams nach sortOrder.
               Bereits gespielte Spieltage werden nicht überschrieben.
             </p>
             <button onClick={generateScheduleFromHistory} className="bg-[#00ff87] text-black font-bold px-6 py-2 rounded hover:bg-green-400">
