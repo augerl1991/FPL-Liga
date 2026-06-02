@@ -8,7 +8,7 @@ type SquadPlayer = {
   boughtFor: number;
   fplPlayer: { id: number; webName: string; teamName: string; position: string; totalPoints: number };
 };
-type GwPoints = { gameweeks: { id: number; number: number }[]; points: Record<number, Record<number, number>> };
+type GwPoints = { gameweeks: { id: number; number: number }[]; points: Record<number, Record<number, number>>; totals: Record<number, number> };
 
 const COLS = [
   { pos: "GK",  label: "Torhüter",   max: 3, border: "border-yellow-500", badge: "bg-yellow-600" },
@@ -160,10 +160,10 @@ export default function AlleKaderSeite() {
                   <span className="text-gray-400">Restbudget: <span className="text-[#00ff87] font-bold">{560 - totalSpent} Mio</span></span>
                 </>
               )}
-              {showTotal && (
+              {showTotal && gwData && (
                 <span className="text-gray-400">
                   Gesamtpunkte: <span className="text-[#00ff87] font-bold">
-                    {squad.reduce((s, p) => s + p.fplPlayer.totalPoints, 0)}
+                    {squad.reduce((s, p) => s + (gwData.totals?.[p.fplPlayer.id] ?? 0), 0)}
                   </span>
                 </span>
               )}
@@ -215,7 +215,7 @@ export default function AlleKaderSeite() {
                                 )}
                                 {showTotal && (
                                   <span className="text-[9px] font-bold text-[#00ff87] bg-[#00ff87]/10 px-1.5 py-0.5 rounded">
-                                    ⭐{sp.fplPlayer.totalPoints}
+                                    ⭐{gwData?.totals?.[sp.fplPlayer.id] ?? 0}
                                   </span>
                                 )}
                                 {showLastGw && lastGwPts !== null && (

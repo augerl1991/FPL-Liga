@@ -53,8 +53,9 @@ export async function GET(req: NextRequest) {
   });
 
   if (squadIds.length === 0 || gameweeks.length === 0)
-    return NextResponse.json({ gameweeks, points: {} });
+    return NextResponse.json({ gameweeks, points: {}, totals: {} });
 
+  // Punkte für das Fenster (letzte N GWs)
   const rows = await prisma.weeklyPoints.findMany({
     where: {
       fplPlayerId: { in: squadIds },
@@ -68,5 +69,15 @@ export async function GET(req: NextRequest) {
     (points[r.fplPlayerId] ??= {})[r.gameweekId] = r.points;
   }
 
-  return NextResponse.json({ gameweeks, points });
+  // Gesamtpunkte = Summe ALLER gespielten GWs in der Liga-DB (nicht FPL totalPoints)
+  const allRows = await prisma.weeklyPoints.findMany({
+    where: { fplPlayerId: { in: squadIds } },
+    select: { fplPlayerId: true, points: true },
+  });
+  const totals: Record<number, number> = {};
+  for (const r of allRows) {
+    totals[r.fplPlayerId] = (totals[r.fplPlayerId] ?? 0) + r.points;
+  }
+
+  return NextResponse.json({ gameweeks, points, totals });
 }

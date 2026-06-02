@@ -9,7 +9,7 @@ type SquadPlayer = {
 };
 
 type Gameweek = { id: number; number: number };
-type SquadPoints = { gameweeks: Gameweek[]; points: Record<number, Record<number, number>> };
+type SquadPoints = { gameweeks: Gameweek[]; points: Record<number, Record<number, number>>; totals: Record<number, number> };
 
 const POS_ORDER = ["GK", "DEF", "MID", "FWD"];
 const POS_LABELS: Record<string, string> = { GK: "Torhüter", DEF: "Abwehr", MID: "Mittelfeld", FWD: "Sturm" };
@@ -21,6 +21,7 @@ export default function KaderSeite() {
   const [budget, setBudget] = useState(0);
   const [gameweeks, setGameweeks] = useState<Gameweek[]>([]);
   const [points, setPoints] = useState<Record<number, Record<number, number>>>({});
+  const [totals, setTotals] = useState<Record<number, number>>({});
   const [showCount, setShowCount] = useState(5);
   const [savingCount, setSavingCount] = useState(false);
 
@@ -39,6 +40,7 @@ export default function KaderSeite() {
         if (data.gameweeks) {
           setGameweeks(data.gameweeks);
           setPoints(data.points ?? {});
+          setTotals(data.totals ?? {});
         }
       });
     fetch("/api/admin/config?key=kaderGwCount")
@@ -142,7 +144,7 @@ export default function KaderSeite() {
                         <div className="font-semibold">{sp.fplPlayer.webName}</div>
                         <div className="text-gray-400 text-xs">{sp.fplPlayer.teamName}</div>
                       </td>
-                      <td className="px-4 py-3 text-center text-[#00ff87]">{sp.fplPlayer.totalPoints} Pkt</td>
+                      <td className="px-4 py-3 text-center text-[#00ff87]">{totals[sp.fplPlayer.id] ?? 0} Pkt</td>
                       {shownGws.map((gw) => {
                         const p = points[sp.fplPlayer.id]?.[gw.id];
                         return (
