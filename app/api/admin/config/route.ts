@@ -3,8 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 const DEFAULTS: Record<string, string> = {
-  plMode: "history", // "history" | "live"
-  kaderGwCount: "5", // Anzahl der letzten Spieltage in "Mein Kader" (1-5), global vom Admin gesetzt
+  plMode: "history",   // "history" | "live"
+  kaderGwCount: "5",   // Anzahl der letzten Spieltage in "Mein Kader" (1-5)
+  alleKaderPrice: "1", // Kaufpreis in "Alle Kader" anzeigen (1=ja, 0=nein)
+  alleKaderTotal: "1", // Gesamtpunkte in "Alle Kader" anzeigen
+  alleKaderLastGw: "1",// Letzter-Spieltag-Punkte in "Alle Kader" anzeigen
 };
 
 export async function GET(req: NextRequest) {
