@@ -8,6 +8,7 @@ const DEFAULTS: Record<string, string> = {
   alleKaderPrice: "1", // Kaufpreis in "Alle Kader" anzeigen (1=ja, 0=nein)
   alleKaderTotal: "1", // Gesamtpunkte in "Alle Kader" anzeigen
   alleKaderLastGw: "1",// Letzter-Spieltag-Punkte in "Alle Kader" anzeigen
+  champagnerDuell: "1",// Champagner-Duell (Felix/Jul/Gerhard) in der Tabelle markieren
 };
 
 export async function GET(req: NextRequest) {
