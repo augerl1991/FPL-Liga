@@ -5,6 +5,48 @@ import Link from "next/link";
 type Match = { id: number; homeTeamId: number; awayTeamId: number; homePoints: number | null; awayPoints: number | null; played: boolean; homeTeam: { name: string }; awayTeam: { name: string } };
 type Gameweek = { id: number; number: number; matches: Match[] };
 
+function Spielbericht({ gameweekId }: { gameweekId: number }) {
+  const [open, setOpen] = useState(false);
+  const [lines, setLines] = useState<string[] | null>(null);
+  const [text, setText] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function load() {
+    if (lines) { setOpen((o) => !o); return; }
+    fetch(`/api/spielbericht?gameweekId=${gameweekId}`)
+      .then((r) => r.json())
+      .then((d) => { setLines(d.lines ?? []); setText(d.text ?? ""); setOpen(true); })
+      .catch(() => setLines([]));
+  }
+
+  function copy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="border-t border-gray-700 bg-[#0a1628]/40">
+      <button onClick={load} className="w-full text-left px-4 py-2 text-xs text-[#04f5ff] hover:bg-white/5 transition-colors flex items-center gap-1.5">
+        📝 Spieltagsbericht {open ? "▲" : "▼"}
+      </button>
+      {open && lines && (
+        <div className="px-4 pb-3">
+          <div className="glass rounded-lg p-3 text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+            {lines.length === 0 ? <span className="text-gray-500">Noch keine gespielten Partien.</span> : lines.join("\n")}
+          </div>
+          {lines.length > 0 && (
+            <button onClick={copy} className="mt-2 text-xs glass-soft hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg transition-colors">
+              {copied ? "✓ Kopiert!" : "📋 Für WhatsApp kopieren"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SpielplanSeite() {
   const [gameweeks, setGameweeks] = useState<Gameweek[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -69,6 +111,7 @@ export default function SpielplanSeite() {
                       </span>
                     </Link>
                   ))}
+                  {gw.matches.some((m) => m.played) && <Spielbericht gameweekId={gw.id} />}
                 </div>
               )}
             </div>

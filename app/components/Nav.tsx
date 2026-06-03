@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 const LINKS = [
   { href: "/tabelle",      label: "Tabelle",      adminOnly: false },
   { href: "/spielplan",    label: "Spielplan",    adminOnly: false },
+  { href: "/statistik",    label: "Statistik",    adminOnly: false },
   { href: "/aufstellung",  label: "Aufstellung",  hideForAdmin: true },
   { href: "/kader",        label: "Mein Kader",   hideForAdmin: true },
   { href: "/alle-kader",   label: "Alle Kader",   adminOnly: false },

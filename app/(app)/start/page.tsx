@@ -147,6 +147,7 @@ function AdminLineupWidget() {
 const SPIELBETRIEB: Tile[] = [
   { href: "/spielplan", title: "Spielplan",  desc: "Begegnungen & Ergebnisse", emoji: "📅" },
   { href: "/tabelle",   title: "Tabelle",    desc: "Aktueller Stand der Liga", emoji: "🏆" },
+  { href: "/statistik", title: "Statistik",  desc: "Rekorde & Bestmarken",     emoji: "📊" },
 ];
 const KADER: Tile[] = [
   { href: "/kader",      title: "Mein Kader",  desc: "Deine Spieler verwalten",  emoji: "👥" },
@@ -220,7 +221,7 @@ export default function StartPage() {
         {/* Spielbetrieb */}
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500 px-1">Spielbetrieb</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {SPIELBETRIEB.map((t) => <TileCard key={t.href} t={t} />)}
           </div>
         </section>
