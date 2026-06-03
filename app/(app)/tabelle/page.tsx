@@ -71,8 +71,15 @@ export default function TabelleSeite() {
       const m = DUELL_MARK[cr];
       out.push({ key: "champ", icon: m.icon, magnum: m.magnum, title: m.title, ring: m.ring, big: m.magnum });
     }
-    // Whisky: nur der Letzte der beiden (Rang 2) zahlt
-    if (whiskyRank[teamId] === 2) {
+    // Whisky-Duell: Bester der zwei bekommt eine Krone, der Letzte zahlt (Glas)
+    const wr = whiskyRank[teamId];
+    if (wr === 1) {
+      out.push({
+        key: "whisky", icon: "👑",
+        title: "Whisky-Duell (Sebi vs Jul): 1. Platz – zahlt nichts! 👑",
+        ring: "ring-amber-400/60",
+      });
+    } else if (wr === 2) {
       out.push({
         key: "whisky", icon: "🥃", big: true,
         title: "Whisky-Duell (Sebi vs Jul): Letzter der beiden zahlt eine Flasche Whisky 🥃",
@@ -213,8 +220,9 @@ export default function TabelleSeite() {
       {whisky && Object.keys(whiskyRank).length > 0 && (
         <div className="mt-3 glass rounded-xl px-4 py-3 text-xs text-gray-300">
           <p className="font-semibold text-amber-400 mb-1.5">🥃 Whisky-Duell (Sebi · Jul)</p>
-          <div className="text-gray-400">
-            🥃 Der Letzte der beiden zahlt eine Flasche Whisky · der Bessere zahlt nichts
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-gray-400">
+            <span>👑 1. Platz – zahlt nichts</span>
+            <span>🥃 Letzter – zahlt eine Flasche Whisky</span>
           </div>
         </div>
       )}
