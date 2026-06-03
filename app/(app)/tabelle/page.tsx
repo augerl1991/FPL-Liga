@@ -84,10 +84,21 @@ export default function TabelleSeite() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Tabelle</h1>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
+      <h1 className="text-2xl font-bold text-[#00ff87] mb-4">Liga-Tabelle</h1>
+
+      {/* Admin-Kasterl: alle Ein-/Ausblend-Schalter gesammelt (gelbes Admin-Design) */}
+      {isAdmin && (
+        <div
+          className="mb-5 rounded-2xl ring-1 ring-yellow-400/25 p-4"
+          style={{ background: "linear-gradient(160deg, rgba(251,191,36,0.08) 0%, transparent 55%)" }}
+        >
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/30">
+              🔐 Admin · Anzeige
+            </span>
+            <span className="text-xs text-gray-400">Ein-/ausblenden für alle Mitglieder</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => toggle("champagnerDuell", duell, setDuell)}
               disabled={saving === "champagnerDuell"}
@@ -109,8 +120,8 @@ export default function TabelleSeite() {
               🥃 Whisky-Duell
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="glass rounded-xl overflow-hidden shadow-lg overflow-x-auto">
         <table className="w-full text-sm">
