@@ -8,53 +8,78 @@ type Row = {
   scored: number; conceded: number; fplPoints: number;
 };
 
-// Teilnehmer des Champagner-Duells (per Username, case-insensitive)
+// Champagner-Duell: Felix / Jul / Gerhard
 const DUELL_USERS = ["felix", "jul", "gerhard"];
-
-// Rang im Duell -> Markierung
 const DUELL_MARK: Record<number, { icon: string; magnum?: boolean; title: string; ring: string }> = {
   1: { icon: "👑", title: "Champagner-Duell: 1. Platz – der Sieger zahlt nichts! 👑", ring: "ring-yellow-400/60" },
   2: { icon: "🍾", title: "Champagner-Duell: 2. Platz – eine normale Flasche Champagner fällig 🍾", ring: "ring-gray-300/50" },
   3: { icon: "🍾", magnum: true, title: "Champagner-Duell: 3. (letzter) Platz – eine MAGNUM-Flasche Champagner fällig! 🍾🍾", ring: "ring-amber-600/60" },
 };
 
+// Whisky-Duell: Sebi vs Jul – der Letzte der beiden zahlt eine Flasche Whisky
+const WHISKY_USERS = ["sebi", "jul"];
+
+type Badge = { key: string; icon: string; magnum?: boolean; title: string; ring: string; big?: boolean };
+
 export default function TabelleSeite() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [table, setTable] = useState<Row[]>([]);
   const [duell, setDuell] = useState(true);
-  const [savingDuell, setSavingDuell] = useState(false);
+  const [whisky, setWhisky] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
   const seasonId = 1;
 
   useEffect(() => {
     fetch(`/api/table?seasonId=${seasonId}`)
       .then((r) => r.json())
       .then((data) => Array.isArray(data) && setTable(data));
-    fetch("/api/admin/config?key=champagnerDuell")
-      .then((r) => r.json())
-      .then((d) => setDuell(d.value !== "0"))
-      .catch(() => {});
+    fetch("/api/admin/config?key=champagnerDuell").then((r) => r.json()).then((d) => setDuell(d.value !== "0")).catch(() => {});
+    fetch("/api/admin/config?key=whiskyDuell").then((r) => r.json()).then((d) => setWhisky(d.value !== "0")).catch(() => {});
   }, [seasonId]);
 
-  function toggleDuell() {
+  function toggle(key: string, current: boolean, setter: (v: boolean) => void) {
     if (!isAdmin) return;
-    const next = !duell;
-    setDuell(next);
-    setSavingDuell(true);
+    const next = !current;
+    setter(next);
+    setSaving(key);
     fetch("/api/admin/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "champagnerDuell", value: next ? "1" : "0" }),
-    }).finally(() => setSavingDuell(false));
+      body: JSON.stringify({ key, value: next ? "1" : "0" }),
+    }).finally(() => setSaving(null));
   }
 
   const played = (r: Row) => r.W + r.D + r.L;
 
-  // Rang innerhalb der drei Duell-Teilnehmer ermitteln (Tabellenreihenfolge = maßgeblich)
-  const duellRank: Record<number, number> = {};
+  // Ränge innerhalb der Duell-Teilnehmer (Tabellenreihenfolge ist maßgeblich)
+  const champRank: Record<number, number> = {};
   if (duell) {
-    const participants = table.filter((r) => DUELL_USERS.includes(r.username.toLowerCase()));
-    participants.forEach((r, i) => { duellRank[r.teamId] = i + 1; });
+    table.filter((r) => DUELL_USERS.includes(r.username.toLowerCase()))
+      .forEach((r, i) => { champRank[r.teamId] = i + 1; });
+  }
+  const whiskyRank: Record<number, number> = {};
+  if (whisky) {
+    table.filter((r) => WHISKY_USERS.includes(r.username.toLowerCase()))
+      .forEach((r, i) => { whiskyRank[r.teamId] = i + 1; });
+  }
+
+  function badgesFor(teamId: number): Badge[] {
+    const out: Badge[] = [];
+    const cr = champRank[teamId];
+    if (cr) {
+      const m = DUELL_MARK[cr];
+      out.push({ key: "champ", icon: m.icon, magnum: m.magnum, title: m.title, ring: m.ring, big: m.magnum });
+    }
+    // Whisky: nur der Letzte der beiden (Rang 2) zahlt
+    if (whiskyRank[teamId] === 2) {
+      out.push({
+        key: "whisky", icon: "🥃", big: true,
+        title: "Whisky-Duell (Sebi vs Jul): Letzter der beiden zahlt eine Flasche Whisky 🥃",
+        ring: "ring-amber-700/70",
+      });
+    }
+    return out;
   }
 
   return (
@@ -62,18 +87,28 @@ export default function TabelleSeite() {
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold text-[#00ff87]">Liga-Tabelle</h1>
         {isAdmin && (
-          <button
-            onClick={toggleDuell}
-            disabled={savingDuell}
-            title={duell ? "Champagner-Duell ausblenden" : "Champagner-Duell einblenden"}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
-              duell
-                ? "bg-[#00ff87]/15 text-[#00ff87] ring-1 ring-[#00ff87]/30"
-                : "glass-soft text-gray-500 line-through"
-            }`}
-          >
-            🍾 Champagner-Duell
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => toggle("champagnerDuell", duell, setDuell)}
+              disabled={saving === "champagnerDuell"}
+              title={duell ? "Champagner-Duell ausblenden" : "Champagner-Duell einblenden"}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                duell ? "bg-[#00ff87]/15 text-[#00ff87] ring-1 ring-[#00ff87]/30" : "glass-soft text-gray-500 line-through"
+              }`}
+            >
+              🍾 Champagner-Duell
+            </button>
+            <button
+              onClick={() => toggle("whiskyDuell", whisky, setWhisky)}
+              disabled={saving === "whiskyDuell"}
+              title={whisky ? "Whisky-Duell ausblenden" : "Whisky-Duell einblenden"}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                whisky ? "bg-[#00ff87]/15 text-[#00ff87] ring-1 ring-[#00ff87]/30" : "glass-soft text-gray-500 line-through"
+              }`}
+            >
+              🥃 Whisky-Duell
+            </button>
+          </div>
         )}
       </div>
 
@@ -97,8 +132,7 @@ export default function TabelleSeite() {
           <tbody>
             {table.map((row, i) => {
               const gd = row.scored - row.conceded;
-              const rank = duellRank[row.teamId];
-              const mark = rank ? DUELL_MARK[rank] : null;
+              const badges = badgesFor(row.teamId);
               return (
                 <tr
                   key={row.teamId}
@@ -108,17 +142,18 @@ export default function TabelleSeite() {
                 >
                   <td className="px-4 py-3 text-gray-400 font-semibold">{i + 1}</td>
                   <td className="px-4 py-3">
-                    <div className="font-semibold flex items-center gap-1.5">
+                    <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                       {row.teamName}
-                      {mark && (
+                      {badges.map((b) => (
                         <span
-                          title={mark.title}
-                          className={`inline-flex items-center gap-0.5 rounded-full bg-black/30 ring-1 ${mark.ring} px-1.5 py-0.5 leading-none cursor-help ${mark.magnum ? "text-base" : "text-xs"}`}
+                          key={b.key}
+                          title={b.title}
+                          className={`inline-flex items-center gap-0.5 rounded-full bg-black/30 ring-1 ${b.ring} px-1.5 py-0.5 leading-none cursor-help ${b.big ? "text-base" : "text-xs"}`}
                         >
-                          {mark.icon}
-                          {mark.magnum && <sup className="text-[7px] font-black text-amber-300 ml-0.5">XL</sup>}
+                          {b.icon}
+                          {b.magnum && <sup className="text-[7px] font-black text-amber-300 ml-0.5">XL</sup>}
                         </span>
-                      )}
+                      ))}
                     </div>
                     <div className="text-gray-400 text-xs">{row.username}</div>
                   </td>
@@ -152,13 +187,23 @@ export default function TabelleSeite() {
       </p>
 
       {/* Legende Champagner-Duell */}
-      {duell && Object.keys(duellRank).length > 0 && (
+      {duell && Object.keys(champRank).length > 0 && (
         <div className="mt-4 glass rounded-xl px-4 py-3 text-xs text-gray-300">
           <p className="font-semibold text-[#00ff87] mb-1.5">🥂 Champagner-Duell (Felix · Jul · Gerhard)</p>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-gray-400">
             <span>👑 1. Platz – zahlt nichts</span>
             <span>🍾 2. Platz – normale Flasche Champagner</span>
             <span>🍾<sup className="text-[7px] font-black text-amber-300">XL</sup> 3. Platz – Magnum-Flasche Champagner</span>
+          </div>
+        </div>
+      )}
+
+      {/* Legende Whisky-Duell */}
+      {whisky && Object.keys(whiskyRank).length > 0 && (
+        <div className="mt-3 glass rounded-xl px-4 py-3 text-xs text-gray-300">
+          <p className="font-semibold text-amber-400 mb-1.5">🥃 Whisky-Duell (Sebi · Jul)</p>
+          <div className="text-gray-400">
+            🥃 Der Letzte der beiden zahlt eine Flasche Whisky · der Bessere zahlt nichts
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ const DEFAULTS: Record<string, string> = {
   alleKaderTotal: "1", // Gesamtpunkte in "Alle Kader" anzeigen
   alleKaderLastGw: "1",// Letzter-Spieltag-Punkte in "Alle Kader" anzeigen
   champagnerDuell: "1",// Champagner-Duell (Felix/Jul/Gerhard) in der Tabelle markieren
+  whiskyDuell: "1",    // Whisky-Duell (Sebi/Jul) in der Tabelle markieren
   navStatistik: "1",   // Statistik-Seite im Menü für Mitglieder sichtbar
 };
 
