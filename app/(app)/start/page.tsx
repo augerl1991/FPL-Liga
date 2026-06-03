@@ -167,6 +167,19 @@ function TileCard({ t }: { t: Tile }) {
 export default function StartPage() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
+  const [statistikVisible, setStatistikVisible] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/config?key=navStatistik")
+      .then((r) => r.json())
+      .then((d) => setStatistikVisible(d.value !== "0"))
+      .catch(() => {});
+  }, []);
+
+  // Statistik-Kachel für Mitglieder ausblenden, wenn vom Admin deaktiviert
+  const spielbetrieb = SPIELBETRIEB.filter(
+    (t) => t.href !== "/statistik" || statistikVisible || isAdmin
+  );
 
   return (
     <div className="space-y-8">
@@ -222,7 +235,7 @@ export default function StartPage() {
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500 px-1">Spielbetrieb</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {SPIELBETRIEB.map((t) => <TileCard key={t.href} t={t} />)}
+            {spielbetrieb.map((t) => <TileCard key={t.href} t={t} />)}
           </div>
         </section>
 

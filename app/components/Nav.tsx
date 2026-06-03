@@ -1,22 +1,30 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter, usePathname } from "next/navigation";
 
-const LINKS = [
-  { href: "/tabelle",      label: "Tabelle",      adminOnly: false },
-  { href: "/spielplan",    label: "Spielplan",    adminOnly: false },
-  { href: "/statistik",    label: "Statistik",    adminOnly: false },
+type NavLink = { href: string; label: string; hideForAdmin?: boolean; configKey?: string };
+
+const LINKS: NavLink[] = [
+  { href: "/tabelle",      label: "Tabelle" },
+  { href: "/spielplan",    label: "Spielplan" },
+  { href: "/statistik",    label: "Statistik", configKey: "navStatistik" },
   { href: "/aufstellung",  label: "Aufstellung",  hideForAdmin: true },
   { href: "/kader",        label: "Mein Kader",   hideForAdmin: true },
-  { href: "/alle-kader",   label: "Alle Kader",   adminOnly: false },
-  { href: "/pl-spielplan", label: "Liga-Archiv",  adminOnly: false },
+  { href: "/alle-kader",   label: "Alle Kader" },
+  { href: "/pl-spielplan", label: "Liga-Archiv" },
 ];
 
 export default function Nav() {
   const { user, refresh } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [config, setConfig] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/api/admin/config").then((r) => r.json()).then((d) => d && setConfig(d)).catch(() => {});
+  }, []);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -25,6 +33,15 @@ export default function Nav() {
   }
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+  // Sichtbarkeit: configKey "0" => für Mitglieder verbergen; Admin sieht den Link
+  // weiterhin (damit er sich nicht aussperrt), aber gedimmt markiert.
+  const visibleLinks = LINKS.filter((l) => {
+    if (l.hideForAdmin && user?.isAdmin) return false;
+    if (l.configKey && config[l.configKey] === "0" && !user?.isAdmin) return false;
+    return true;
+  });
+  const isHiddenForMembers = (l: NavLink) => l.configKey != null && config[l.configKey] === "0";
 
   return (
     <nav className="sticky top-0 z-50 glass border-x-0 border-t-0 backdrop-blur-2xl">
@@ -39,19 +56,23 @@ export default function Nav() {
         {user && (
           <>
             <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {LINKS.filter((l) => !(l.hideForAdmin && user?.isAdmin)).map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                    isActive(l.href)
-                      ? "bg-white/10 text-[#00ff87] font-semibold"
-                      : "text-gray-300 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  {l.label}
-                </Link>
-              ))}
+              {visibleLinks.map((l) => {
+                const hidden = isHiddenForMembers(l); // nur Admin sieht solche Links
+                return (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    title={hidden ? "Für Mitglieder ausgeblendet" : undefined}
+                    className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                      isActive(l.href)
+                        ? "bg-white/10 text-[#00ff87] font-semibold"
+                        : "text-gray-300 hover:text-white hover:bg-white/5"
+                    } ${hidden ? "opacity-40 italic" : ""}`}
+                  >
+                    {l.label}{hidden ? " 🚫" : ""}
+                  </Link>
+                );
+              })}
               {user.isAdmin && (
                 <Link
                   href="/admin"

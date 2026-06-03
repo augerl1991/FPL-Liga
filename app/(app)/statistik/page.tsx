@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/app/providers";
 
 type Stats = {
   hasData: boolean;
@@ -33,21 +34,59 @@ function Card({ icon, title, children }: { icon: string; title: string; children
 }
 
 export default function StatistikSeite() {
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
   const [stats, setStats] = useState<Stats | null>(null);
+  const [visible, setVisible] = useState(true);
+  const [savingVis, setSavingVis] = useState(false);
 
   useEffect(() => {
     fetch("/api/statistik?seasonId=1")
       .then((r) => r.json())
       .then(setStats)
       .catch(() => setStats({ hasData: false }));
+    fetch("/api/admin/config?key=navStatistik")
+      .then((r) => r.json())
+      .then((d) => setVisible(d.value !== "0"))
+      .catch(() => {});
   }, []);
+
+  function toggleVisible() {
+    if (!isAdmin) return;
+    const next = !visible;
+    setVisible(next);
+    setSavingVis(true);
+    fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "navStatistik", value: next ? "1" : "0" }),
+    }).finally(() => setSavingVis(false));
+  }
+
+  const AdminToggle = isAdmin ? (
+    <button
+      onClick={toggleVisible}
+      disabled={savingVis}
+      title={visible ? "Im Mitglieder-Menü ausblenden" : "Im Mitglieder-Menü einblenden"}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+        visible
+          ? "bg-[#00ff87]/15 text-[#00ff87] ring-1 ring-[#00ff87]/30"
+          : "glass-soft text-gray-500 line-through"
+      }`}
+    >
+      {visible ? "👁 Im Menü sichtbar" : "🚫 Für Mitglieder verborgen"}
+    </button>
+  ) : null;
 
   if (!stats) return <p className="text-gray-400 text-center py-16">Lädt…</p>;
 
   if (!stats.hasData)
     return (
       <div>
-        <h1 className="text-2xl font-bold text-[#00ff87] mb-6">Statistiken & Rekorde</h1>
+        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold text-[#00ff87]">Statistiken & Rekorde</h1>
+          {AdminToggle}
+        </div>
         <div className="glass rounded-xl px-6 py-12 text-center">
           <div className="text-4xl mb-3">📊</div>
           <p className="font-semibold text-gray-400">Noch keine Daten</p>
@@ -60,7 +99,10 @@ export default function StatistikSeite() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[#00ff87] mb-2">Statistiken & Rekorde</h1>
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+        <h1 className="text-2xl font-bold text-[#00ff87]">Statistiken & Rekorde</h1>
+        {AdminToggle}
+      </div>
       <p className="text-sm text-gray-400 mb-6">
         {stats.totalGoals} Tore in {stats.totalMatches} Spielen
       </p>
