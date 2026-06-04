@@ -24,6 +24,11 @@ type Badge = { key: string; icon: string; magnum?: boolean; title: string; ring:
 export default function TabelleSeite() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
+  const me = user?.username?.toLowerCase() ?? "";
+
+  // Wer darf welches Duell sehen?
+  const canSeeChamp  = isAdmin || DUELL_USERS.includes(me);
+  const canSeeWhisky = isAdmin || WHISKY_USERS.includes(me);
   const [table, setTable] = useState<Row[]>([]);
   const [duell, setDuell] = useState(true);
   const [whisky, setWhisky] = useState(true);
@@ -66,25 +71,30 @@ export default function TabelleSeite() {
 
   function badgesFor(teamId: number): Badge[] {
     const out: Badge[] = [];
-    const cr = champRank[teamId];
-    if (cr) {
-      const m = DUELL_MARK[cr];
-      out.push({ key: "champ", icon: m.icon, magnum: m.magnum, title: m.title, ring: m.ring, big: m.magnum });
+    // Champagner-Duell: nur für Felix, Jul, Gerhard (+ Admin) sichtbar
+    if (canSeeChamp) {
+      const cr = champRank[teamId];
+      if (cr) {
+        const m = DUELL_MARK[cr];
+        out.push({ key: "champ", icon: m.icon, magnum: m.magnum, title: m.title, ring: m.ring, big: m.magnum });
+      }
     }
-    // Whisky-Duell: Bester der zwei bekommt eine Krone, der Letzte zahlt (Glas)
-    const wr = whiskyRank[teamId];
-    if (wr === 1) {
-      out.push({
-        key: "whisky", icon: "👑",
-        title: "Whisky-Duell (Sebi vs Jul): 1. Platz – zahlt nichts! 👑",
-        ring: "ring-amber-400/60",
-      });
-    } else if (wr === 2) {
-      out.push({
-        key: "whisky", icon: "🥃", big: true,
-        title: "Whisky-Duell (Sebi vs Jul): Letzter der beiden zahlt eine Flasche Whisky 🥃",
-        ring: "ring-amber-700/70",
-      });
+    // Whisky-Duell: nur für Sebi, Jul (+ Admin) sichtbar
+    if (canSeeWhisky) {
+      const wr = whiskyRank[teamId];
+      if (wr === 1) {
+        out.push({
+          key: "whisky", icon: "👑",
+          title: "Whisky-Duell (Sebi vs Jul): 1. Platz – zahlt nichts! 👑",
+          ring: "ring-amber-400/60",
+        });
+      } else if (wr === 2) {
+        out.push({
+          key: "whisky", icon: "🥃", big: true,
+          title: "Whisky-Duell (Sebi vs Jul): Letzter der beiden zahlt eine Flasche Whisky 🥃",
+          ring: "ring-amber-700/70",
+        });
+      }
     }
     return out;
   }
@@ -204,8 +214,8 @@ export default function TabelleSeite() {
         Sp = Spiele · S/U/N = Sieg/Unentschieden/Niederlage · T+/T− = Tore · TD = Tordifferenz · FPL = Gesamtpunkte · Pts = Ligapunkte
       </p>
 
-      {/* Legende Champagner-Duell */}
-      {duell && Object.keys(champRank).length > 0 && (
+      {/* Legende Champagner-Duell – nur für Teilnehmer + Admin */}
+      {canSeeChamp && duell && Object.keys(champRank).length > 0 && (
         <div className="mt-4 glass rounded-xl px-4 py-3 text-xs text-gray-300">
           <p className="font-semibold text-[#00ff87] mb-1.5">🥂 Champagner-Duell (Felix · Jul · Gerhard)</p>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-gray-400">
@@ -216,8 +226,8 @@ export default function TabelleSeite() {
         </div>
       )}
 
-      {/* Legende Whisky-Duell */}
-      {whisky && Object.keys(whiskyRank).length > 0 && (
+      {/* Legende Whisky-Duell – nur für Teilnehmer + Admin */}
+      {canSeeWhisky && whisky && Object.keys(whiskyRank).length > 0 && (
         <div className="mt-3 glass rounded-xl px-4 py-3 text-xs text-gray-300">
           <p className="font-semibold text-amber-400 mb-1.5">🥃 Whisky-Duell (Sebi · Jul)</p>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-gray-400">
